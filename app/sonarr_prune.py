@@ -56,33 +56,18 @@ class SONARRPRUNE():
                 )
 
                 # PRUNE
-                self.sonarr_tags_no_exclusion = list(
-                    self.config['PRUNE']
-                    ['AUTO_NO_EXCLUSION_TAGS'].split(","))
                 # list(map(int, "list")) converts a list of string to
                 # a list of ints
-                self.sonarr_months_no_exclusion = list(map(int, list(
-                    self.config['PRUNE']
-                    ['AUTO_NO_EXCLUSION_MONTHS'].split(","))))
-                self.remove_after_days = int(
-                    self.config['PRUNE']['REMOVE_MOVIES_AFTER_DAYS'])
-                self.warn_days_infront = int(
-                    self.config['PRUNE']['WARN_DAYS_INFRONT'])
+
                 self.dry_run = True if (
                     self.config['PRUNE']['DRY_RUN'] == "ON") else False
                 self.enabled_run = True if (
                     self.config['PRUNE']['ENABLED'] == "ON") else False
-                self.delete_files = True if (
-                    self.config['PRUNE']
-                    ['PERMANENT_DELETE_MEDIA'] == "ON") else False
                 self.only_show_remove_messages = True if (
                     self.config['PRUNE']
                     ['ONLY_SHOW_REMOVE_MESSAGES'] == "ON") else False
                 self.verbose_logging = True if (
                     self.config['PRUNE']['VERBOSE_LOGGING'] == "ON") else False
-                self.video_extensions = list(
-                    self.config['PRUNE']
-                    ['VIDEO_EXTENSIONS_MONITORED'].split(","))
                 self.mail_enabled = True if (
                     self.config['PRUNE']
                     ['MAIL_ENABLED'] == "ON") else False
@@ -97,8 +82,6 @@ class SONARRPRUNE():
                 self.mail_sender = self.config['PRUNE']['MAIL_SENDER']
                 self.mail_receiver = list(
                     self.config['PRUNE']['MAIL_RECEIVER'].split(","))
-                self.unwanted_genres = list(
-                    self.config['PRUNE']['UNWANTED_GENRES'].split(","))
 
                 # PUSHOVER
                 self.pushover_enabled = True if (
