@@ -184,6 +184,7 @@ class SONARRPRUNE():
 
         else:
             seasons = serie.seasons
+            print(serie.title)
             print(seasons)
 
         return False, False
