@@ -191,14 +191,8 @@ class SONARRPRUNE():
 
         else:
             seasons = serie.seasons
-            print(serie.title)
-            print(seasons)
 
             for season in seasons:
-                print(f"totalEpisodeCount {season.totalEpisodeCount}")
-                print(f"episodeCount {season.episodeCount}")
-                print(f"episodeFileCount {season.episodeFileCount}")
-                print(f"percentOfEpisodes {season.percentOfEpisodes}")
 
                 if season.percentOfEpisodes == 100.0:
 
@@ -228,8 +222,6 @@ class SONARRPRUNE():
                         f"{str(season.seasonNumber).zfill(2)}").st_mtime
                     seasonDownloadDate = \
                         datetime.fromtimestamp(modifieddate)
-
-                    print(seasonDownloadDate)
 
                 now = datetime.now()
 
