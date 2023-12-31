@@ -134,6 +134,10 @@ class SONARRPRUNE():
     def sortOnTitle(self, e):
         return e.sortTitle
 
+    def evalSerie(self, serie):
+
+        return True, True
+
     def run(self):
         if not self.enabled_run:
             logging.info(
