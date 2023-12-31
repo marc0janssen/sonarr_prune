@@ -193,6 +193,9 @@ class SONARRPRUNE():
                 print(f"episodeFileCount {season.episodeFileCount}")
                 print(f"percentOfEpisodes {season.percentOfEpisodes}")
 
+                if season.percentOfEpisodes == 100.0:
+                    print("OKOK")
+
         return False, False
 
     def run(self):
