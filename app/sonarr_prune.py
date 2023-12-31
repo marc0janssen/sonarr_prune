@@ -204,7 +204,7 @@ class SONARRPRUNE():
                             if not self.only_show_remove_messages:
                                 txtFirstSeen = (
                                     f"Prune - COMPLETE - "
-                                    f"{serie.title} {season.seasonNumber} ({serie.year})"
+                                    f"{serie.title} S{season.seasonNumber.zfill(2)} ({serie.year})"
                                 )
 
                                 self.writeLog(False, f"{txtFirstSeen}\n")
