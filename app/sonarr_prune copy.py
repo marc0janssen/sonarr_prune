@@ -1,19 +1,20 @@
 # Name: Sonarr Prune
 # Coder: Marco Janssen (mastodon @marc0janssen@mastodon.online)
-# date: 2021-11-15 21:38:51
-# update: 2023-12-04 21:41:15
+# date: 2023-12-31 19:38:00
+# update: 2023-12-31 19:38:00
 
 import logging
 import configparser
 import sys
 import shutil
 import smtplib
+import os
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
-from datetime import datetime  # , timedelta
+from datetime import datetime, timedelta
 from arrapi import SonarrAPI
 from chump import Application
 from socket import gaierror
@@ -33,7 +34,7 @@ class SONARRPRUNE():
         self.config_file = "sonarr_prune.ini"
         self.exampleconfigfile = "sonarr_prune.ini.example"
         self.log_file = "sonarr_prune.log"
-        self.firstseen = ".firstseen"
+        self.firstcomplete = ".firstcomplete"
 
         self.config_filePath = f"{config_dir}{self.config_file}"
         self.log_filePath = f"{log_dir}{self.log_file}"
@@ -58,7 +59,10 @@ class SONARRPRUNE():
                 # PRUNE
                 # list(map(int, "list")) converts a list of string to
                 # a list of ints
-
+                self.remove_after_days = int(
+                    self.config['PRUNE']['REMOVE_SERIES_AFTER_DAYS'])
+                self.warn_days_infront = int(
+                    self.config['PRUNE']['WARN_DAYS_INFRONT'])
                 self.dry_run = True if (
                     self.config['PRUNE']['DRY_RUN'] == "ON") else False
                 self.enabled_run = True if (
@@ -134,9 +138,200 @@ class SONARRPRUNE():
     def sortOnTitle(self, e):
         return e.sortTitle
 
+    def getTagLabeltoID(self, typeOfMedia):
+        # Put all tags in a dictonairy with pair label <=> ID
+
+        TagLabeltoID = {}
+        if typeOfMedia == "serie":
+            for tag in self.sonarrNode.all_tags():
+                # Add tag to lookup by it's name
+                TagLabeltoID[tag.label] = tag.id
+        else:
+            for tag in self.radarrNode.all_tags():
+                # Add tag to lookup by it's name
+                TagLabeltoID[tag.label] = tag.id
+
+        return TagLabeltoID
+
+    def getIDsforTagLabels(self, typeOfmedia, tagLabels):
+
+        TagLabeltoID = self.getTagLabeltoID(typeOfmedia)
+
+        # Get ID's for extending media
+        tagsIDs = []
+        for taglabel in tagLabels:
+            tagID = TagLabeltoID.get(taglabel)
+            if tagID:
+                tagsIDs.append(tagID)
+
+        return tagsIDs
+
     def evalSerie(self, serie):
 
-        return False, False
+        isRemoved, isPlanned = False, False
+        seasonDownloadDate = None
+
+        # Get ID's for keeping series anyway
+        tagLabels_to_keep = self.tags_to_keep
+        tagsIDs_to_keep = self.getIDsforTagLabels(
+            "serie", tagLabels_to_keep)
+
+        # check if ONE of the "KEEP" tags is
+        # in the set of "MOVIE TAGS"
+        if set(serie.tagsIds) & set(tagsIDs_to_keep):
+            if not self.only_show_remove_messages:
+
+                txtKeeping = (
+                    f"Prune - KEEPING - {serie.title} ({serie.year})."
+                    f" Skipping."
+                )
+
+                self.writeLog(False, f"{txtKeeping}\n")
+                logging.info(txtKeeping)
+
+        else:
+            seasons = serie.seasons
+
+            for season in seasons:
+
+                if season.percentOfEpisodes == 100.0:
+
+                    if not os.path.isfile(
+                        f"{serie.path}/{self.firstcomplete}_S"
+                            f"{str(season.seasonNumber).zfill(2)}"):
+
+                        with open(
+                            f"{serie.path}/{self.firstcomplete}_S"
+                                f"{str(season.seasonNumber).zfill(2)}", 'w') \
+                                as firstcomplete_file:
+                            firstcomplete_file.close()
+
+                            if not self.only_show_remove_messages:
+                                txtFirstSeen = (
+                                    f"Prune - COMPLETE - "
+                                    f"{serie.title} S"
+                                    f"{str(season.seasonNumber).zfill(2)} "
+                                    f"({serie.year})"
+                                )
+
+                                self.writeLog(False, f"{txtFirstSeen}\n")
+                                logging.info(txtFirstSeen)
+
+                    modifieddate = os.stat(
+                        f"{serie.path}/{self.firstcomplete}_S"
+                        f"{str(season.seasonNumber).zfill(2)}").st_mtime
+                    seasonDownloadDate = \
+                        datetime.fromtimestamp(modifieddate)
+
+                now = datetime.now()
+
+                if seasonDownloadDate:
+
+                    # check if there needs to be warn "DAYS" infront of removal
+                    # 1. Are we still within the period before removel?
+                    # 2. Is "NOW" less than "warning days" before removal?
+                    # 3. is "NOW" more then "warning days - 1" before removal
+                    #               (warn only 1 day)
+                    if (
+                        timedelta(
+                            days=self.remove_after_days) >
+                        now - seasonDownloadDate and
+                        seasonDownloadDate +
+                        timedelta(
+                            days=self.remove_after_days) -
+                        now <= timedelta(days=self.warn_days_infront) and
+                        seasonDownloadDate +
+                        timedelta(
+                            days=self.remove_after_days) -
+                        now > timedelta(days=self.warn_days_infront) -
+                        timedelta(days=1)
+                    ):
+                        self.timeLeft = (
+                            seasonDownloadDate +
+                            timedelta(
+                                days=self.remove_after_days) - now)
+
+                        txtTimeLeft = \
+                            'h'.join(str(self.timeLeft).split(':')[:2])
+
+                        if self.pushover_enabled:
+                            self.message = self.userPushover.send_message(
+                                message=f"Prune - {serie.title} "
+                                f"Season {str(season.seasonNumber).zfill(2)}"
+                                f" ({serie.year}) "
+                                f"will be removed from server in "
+                                f"{txtTimeLeft}",
+                                sound=self.pushover_sound
+                            )
+
+                        txtWillBeRemoved = (
+                            f"Prune - WILL BE REMOVED - "
+                            f"{serie.title} "
+                            f"Season {str(season.seasonNumber).zfill(2)}"
+                            f" ({serie.year})"
+                            f" in {txtTimeLeft}"
+                            f" - {seasonDownloadDate}"
+                        )
+
+                        self.writeLog(False, f"{txtWillBeRemoved}\n")
+                        logging.info(txtWillBeRemoved)
+
+                        isRemoved, isPlanned = False, True
+
+                        return isRemoved, isPlanned
+
+                    # Check is season is older than "days set in INI"
+                    if (
+                        now - seasonDownloadDate >=
+                            timedelta(
+                                days=self.remove_after_days)
+                    ):
+
+                        if not self.dry_run:
+                            if self.sonarr_enabled:
+
+                                print("DELETE SEASON")
+
+                        if self.pushover_enabled:
+                            self.message = self.userPushover.send_message(
+                                message=f"{serie.title} "
+                                f"Season {str(season.seasonNumber).zfill(2)} "
+                                f"({serie.year})"
+                                f"Prune - REMOVED - {serie.title} "
+                                f"Season {str(season.seasonNumber).zfill(2)} "
+                                f"({serie.year})"
+                                f" - {seasonDownloadDate}",
+                                sound=self.pushover_sound
+                            )
+
+                        txtRemoved = (
+                            f"Prune - REMOVED - {serie.title} "
+                            f"Season {str(season.seasonNumber).zfill(2)} "
+                            f"({serie.year})"
+                            f" - {seasonDownloadDate}"
+                        )
+
+                        self.writeLog(False, f"{txtRemoved}\n")
+                        logging.info(txtRemoved)
+
+                        isRemoved, isPlanned = True, False
+
+                    else:
+                        if not self.only_show_remove_messages:
+                            txtActive = (
+                                f"Prune - ACTIVE - "
+                                f"{serie.title} "
+                                f"Season {str(season.seasonNumber).zfill(2)} "
+                                f"({serie.year})"
+                                f" - {seasonDownloadDate}"
+                            )
+
+                            self.writeLog(False, f"{txtActive}\n")
+                            logging.info(txtActive)
+
+                        isRemoved, isPlanned = False, False
+
+        return isRemoved, isPlanned
 
     def run(self):
         if not self.enabled_run:
@@ -193,7 +388,7 @@ class SONARRPRUNE():
                     numNotifified += 1
 
         txtEnd = (
-            f"Prune - There were {numDeleted} episodes removed."
+            f"Prune - There were {numDeleted} seaons removed."
         )
 
         if self.pushover_enabled:
@@ -218,7 +413,7 @@ class SONARRPRUNE():
             message["From"] = sender_email
             message['To'] = ", ".join(receiver_email)
             message['Subject'] = (
-                f"Sonarr - Pruned {numDeleted} movies "
+                f"Sonarr - Pruned {numDeleted} seasons "
                 f"and {numNotifified} planned for removal"
             )
 

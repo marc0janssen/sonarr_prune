@@ -1,7 +1,7 @@
 # Name: Sonarr Prune
 # Coder: Marco Janssen (mastodon @marc0janssen@mastodon.online)
-# date: 2021-11-15 21:38:51
-# update: 2023-12-04 21:41:15
+# date: 2023-12-31 19:38:00
+# update: 2023-12-31 19:38:00
 
 import logging
 import configparser
