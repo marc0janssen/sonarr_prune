@@ -280,9 +280,9 @@ class SONARRPRUNE():
 
                         return isRemoved, isPlanned
 
-                    # Check is movie is older than "days set in INI"
+                    # Check is season is older than "days set in INI"
                     if (
-                        not now - seasonDownloadDate >=
+                        now - seasonDownloadDate >=
                             timedelta(
                                 days=self.remove_after_days)
                     ):
@@ -413,7 +413,7 @@ class SONARRPRUNE():
             message["From"] = sender_email
             message['To'] = ", ".join(receiver_email)
             message['Subject'] = (
-                f"Sonarr - Pruned {numDeleted} movies "
+                f"Sonarr - Pruned {numDeleted} seasons "
                 f"and {numNotifified} planned for removal"
             )
 
