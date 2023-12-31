@@ -196,10 +196,13 @@ class SONARRPRUNE():
 
                 if season.percentOfEpisodes == 100.0:
 
-                    if not os.path.isfile(f"{serie.path}/{self.firstcomplete}_S{str(season.seasonNumber).zfill(2)}"):
+                    if not os.path.isfile(
+                        f"{serie.path}/{self.firstcomplete}_S"
+                            f"{str(season.seasonNumber).zfill(2)}"):
 
                         with open(
-                            f"{serie.path}/{self.firstcomplete}_S{str(season.seasonNumber).zfill(2)}", 'w') \
+                            f"{serie.path}/{self.firstcomplete}_S"
+                                f"{str(season.seasonNumber).zfill(2)}", 'w') \
                                 as firstcomplete_file:
                             firstcomplete_file.close()
 
@@ -214,7 +217,9 @@ class SONARRPRUNE():
                                 self.writeLog(False, f"{txtFirstSeen}\n")
                                 logging.info(txtFirstSeen)
 
-                    modifieddate = os.stat(f"{serie.path}/{self.firstcomplete}_S{str(season.seasonNumber).zfill(2)}").st_mtime
+                    modifieddate = os.stat(
+                        f"{serie.path}/{self.firstcomplete}_S"
+                        f"{str(season.seasonNumber).zfill(2)}").st_mtime
                     seasonDownloadDate = \
                         datetime.fromtimestamp(modifieddate)
 
