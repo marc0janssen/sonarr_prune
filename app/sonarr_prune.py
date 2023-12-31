@@ -168,6 +168,9 @@ class SONARRPRUNE():
 
     def evalSerie(self, serie):
 
+        isRemoved, isPlanned = False, False
+        seasonDownloadDate = None
+
         # Get ID's for keeping series anyway
         tagLabels_to_keep = self.tags_to_keep
         tagsIDs_to_keep = self.getIDsforTagLabels(
@@ -196,8 +199,6 @@ class SONARRPRUNE():
                 print(f"episodeCount {season.episodeCount}")
                 print(f"episodeFileCount {season.episodeFileCount}")
                 print(f"percentOfEpisodes {season.percentOfEpisodes}")
-
-                seasonDownloadDate = None
 
                 if season.percentOfEpisodes == 100.0:
 
@@ -229,8 +230,6 @@ class SONARRPRUNE():
                         datetime.fromtimestamp(modifieddate)
 
                     print(seasonDownloadDate)
-
-                isRemoved, isPlanned = False, False
 
                 now = datetime.now()
 
