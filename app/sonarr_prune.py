@@ -196,7 +196,7 @@ class SONARRPRUNE():
 
                 if season.percentOfEpisodes == 100.0:
 
-                    if not os.path.isfile(f"{serie.path}/{self.firstcomplete}"):
+                    if not os.path.isfile(f"{serie.path}/{self.firstcomplete}_S{season.seasonNumber.zfill(2)}e"):
                         with open(f"{serie.path}/{self.firstcomplete}", 'w') \
                                 as firstcomplete_file:
                             firstcomplete_file.close()
@@ -204,7 +204,7 @@ class SONARRPRUNE():
                             if not self.only_show_remove_messages:
                                 txtFirstSeen = (
                                     f"Prune - COMPLETE - "
-                                    f"{serie.title} S{season.seasonNumber} ({serie.year})"
+                                    f"{serie.title} S{season.seasonNumber.zfill(2)} ({serie.year})"
                                 )
 
                                 self.writeLog(False, f"{txtFirstSeen}\n")
