@@ -193,9 +193,7 @@ class SONARRPRUNE():
                     numNotifified += 1
 
         txtEnd = (
-            f"Prune - There were {numDeleted} movies removed "
-            f"and {numNotifified} movies planned to be removed "
-            f"within {self.warn_days_infront} days."
+            f"Prune - There were {numDeleted} episodes removed."
         )
 
         if self.pushover_enabled:
