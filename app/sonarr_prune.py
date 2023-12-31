@@ -197,6 +197,8 @@ class SONARRPRUNE():
                 print(f"episodeFileCount {season.episodeFileCount}")
                 print(f"percentOfEpisodes {season.percentOfEpisodes}")
 
+                seasonDownloadDate = None
+
                 if season.percentOfEpisodes == 100.0:
 
                     if not os.path.isfile(
@@ -232,109 +234,111 @@ class SONARRPRUNE():
 
                 now = datetime.now()
 
-                # check if there needs to be warn "DAYS" infront of removal
-                # 1. Are we still within the period before removel?
-                # 2. Is "NOW" less than "warning days" before removal?
-                # 3. is "NOW" more then "warning days - 1" before removal
-                #               (warn only 1 day)
-                if (
-                    timedelta(
-                        days=self.remove_after_days) >
-                    now - seasonDownloadDate and
-                    seasonDownloadDate +
-                    timedelta(
-                        days=self.remove_after_days) -
-                    now <= timedelta(days=self.warn_days_infront) and
-                    seasonDownloadDate +
-                    timedelta(
-                        days=self.remove_after_days) -
-                    now > timedelta(days=self.warn_days_infront) -
-                    timedelta(days=1)
-                ):
-                    self.timeLeft = (
+                if seasonDownloadDate:
+
+                    # check if there needs to be warn "DAYS" infront of removal
+                    # 1. Are we still within the period before removel?
+                    # 2. Is "NOW" less than "warning days" before removal?
+                    # 3. is "NOW" more then "warning days - 1" before removal
+                    #               (warn only 1 day)
+                    if (
+                        timedelta(
+                            days=self.remove_after_days) >
+                        now - seasonDownloadDate and
                         seasonDownloadDate +
                         timedelta(
-                            days=self.remove_after_days) - now)
-
-                    txtTimeLeft = \
-                        'h'.join(str(self.timeLeft).split(':')[:2])
-
-                    if self.pushover_enabled:
-                        self.message = self.userPushover.send_message(
-                            message=f"Prune - {serie.title} "
-                            f"Season {str(season.seasonNumber).zfill(2)}"
-                            f" ({serie.year}) "
-                            f"will be removed from server in "
-                            f"{txtTimeLeft}",
-                            sound=self.pushover_sound
-                        )
-
-                    txtWillBeRemoved = (
-                        f"Prune - WILL BE REMOVED - "
-                        f"{serie.title} "
-                        f"Season {str(season.seasonNumber).zfill(2)}"
-                        f" ({serie.year})"
-                        f" in {txtTimeLeft}"
-                        f" - {seasonDownloadDate}"
-                    )
-
-                    self.writeLog(False, f"{txtWillBeRemoved}\n")
-                    logging.info(txtWillBeRemoved)
-
-                    isRemoved, isPlanned = False, True
-
-                    return isRemoved, isPlanned
-
-                # Check is movie is older than "days set in INI"
-                if (
-                    now - seasonDownloadDate >=
+                            days=self.remove_after_days) -
+                        now <= timedelta(days=self.warn_days_infront) and
+                        seasonDownloadDate +
                         timedelta(
-                            days=self.remove_after_days)
-                ):
+                            days=self.remove_after_days) -
+                        now > timedelta(days=self.warn_days_infront) -
+                        timedelta(days=1)
+                    ):
+                        self.timeLeft = (
+                            seasonDownloadDate +
+                            timedelta(
+                                days=self.remove_after_days) - now)
 
-                    if not self.dry_run:
-                        if self.sonarr_enabled:
+                        txtTimeLeft = \
+                            'h'.join(str(self.timeLeft).split(':')[:2])
 
-                            print("DELETE SEASON")
+                        if self.pushover_enabled:
+                            self.message = self.userPushover.send_message(
+                                message=f"Prune - {serie.title} "
+                                f"Season {str(season.seasonNumber).zfill(2)}"
+                                f" ({serie.year}) "
+                                f"will be removed from server in "
+                                f"{txtTimeLeft}",
+                                sound=self.pushover_sound
+                            )
 
-                    if self.pushover_enabled:
-                        self.message = self.userPushover.send_message(
-                            message=f"{serie.title} "
-                            f"Season {str(season.seasonNumber).zfill(2)} "
-                            f"({serie.year})"
-                            f"Prune - REMOVED - {serie.title} "
-                            f"Season {str(season.seasonNumber).zfill(2)} "
-                            f"({serie.year})"
-                            f" - {seasonDownloadDate}",
-                            sound=self.pushover_sound
+                        txtWillBeRemoved = (
+                            f"Prune - WILL BE REMOVED - "
+                            f"{serie.title} "
+                            f"Season {str(season.seasonNumber).zfill(2)}"
+                            f" ({serie.year})"
+                            f" in {txtTimeLeft}"
+                            f" - {seasonDownloadDate}"
                         )
 
-                    txtRemoved = (
-                        f"Prune - REMOVED - {serie.title} "
-                        f"Season {str(season.seasonNumber).zfill(2)} "
-                        f"({serie.year})"
-                        f" - {seasonDownloadDate}"
-                    )
+                        self.writeLog(False, f"{txtWillBeRemoved}\n")
+                        logging.info(txtWillBeRemoved)
 
-                    self.writeLog(False, f"{txtRemoved}\n")
-                    logging.info(txtRemoved)
+                        isRemoved, isPlanned = False, True
 
-                    isRemoved, isPlanned = True, False
+                        return isRemoved, isPlanned
 
-                else:
-                    if not self.only_show_remove_messages:
-                        txtActive = (
-                            f"Prune - ACTIVE - "
-                            f"{serie.title} "
+                    # Check is movie is older than "days set in INI"
+                    if (
+                        now - seasonDownloadDate >=
+                            timedelta(
+                                days=self.remove_after_days)
+                    ):
+
+                        if not self.dry_run:
+                            if self.sonarr_enabled:
+
+                                print("DELETE SEASON")
+
+                        if self.pushover_enabled:
+                            self.message = self.userPushover.send_message(
+                                message=f"{serie.title} "
+                                f"Season {str(season.seasonNumber).zfill(2)} "
+                                f"({serie.year})"
+                                f"Prune - REMOVED - {serie.title} "
+                                f"Season {str(season.seasonNumber).zfill(2)} "
+                                f"({serie.year})"
+                                f" - {seasonDownloadDate}",
+                                sound=self.pushover_sound
+                            )
+
+                        txtRemoved = (
+                            f"Prune - REMOVED - {serie.title} "
                             f"Season {str(season.seasonNumber).zfill(2)} "
                             f"({serie.year})"
                             f" - {seasonDownloadDate}"
                         )
 
-                        self.writeLog(False, f"{txtActive}\n")
-                        logging.info(txtActive)
+                        self.writeLog(False, f"{txtRemoved}\n")
+                        logging.info(txtRemoved)
 
-                    isRemoved, isPlanned = False, False
+                        isRemoved, isPlanned = True, False
+
+                    else:
+                        if not self.only_show_remove_messages:
+                            txtActive = (
+                                f"Prune - ACTIVE - "
+                                f"{serie.title} "
+                                f"Season {str(season.seasonNumber).zfill(2)} "
+                                f"({serie.year})"
+                                f" - {seasonDownloadDate}"
+                            )
+
+                            self.writeLog(False, f"{txtActive}\n")
+                            logging.info(txtActive)
+
+                        isRemoved, isPlanned = False, False
 
         return isRemoved, isPlanned
 
