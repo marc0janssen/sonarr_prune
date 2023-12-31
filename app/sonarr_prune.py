@@ -134,9 +134,56 @@ class SONARRPRUNE():
     def sortOnTitle(self, e):
         return e.sortTitle
 
+    def getTagLabeltoID(self, typeOfMedia):
+        # Put all tags in a dictonairy with pair label <=> ID
+
+        TagLabeltoID = {}
+        if typeOfMedia == "serie":
+            for tag in self.sonarrNode.all_tags():
+                # Add tag to lookup by it's name
+                TagLabeltoID[tag.label] = tag.id
+        else:
+            for tag in self.radarrNode.all_tags():
+                # Add tag to lookup by it's name
+                TagLabeltoID[tag.label] = tag.id
+
+        return TagLabeltoID
+
+    def getIDsforTagLabels(self, typeOfmedia, tagLabels):
+
+        TagLabeltoID = self.getTagLabeltoID(typeOfmedia)
+
+        # Get ID's for extending media
+        tagsIDs = []
+        for taglabel in tagLabels:
+            tagID = TagLabeltoID.get(taglabel)
+            if tagID:
+                tagsIDs.append(tagID)
+
+        return tagsIDs
+
     def evalSerie(self, serie):
 
-        print(serie)
+        # Get ID's for keeping series anyway
+        tagLabels_to_keep = self.tags_to_keep
+        tagsIDs_to_keep = self.getIDsforTagLabels(
+            "serie", tagLabels_to_keep)
+
+        # check if ONE of the "KEEP" tags is
+        # in the set of "MOVIE TAGS"
+        if set(serie.tagsIds) & set(tagsIDs_to_keep):
+            if not self.only_show_remove_messages:
+
+                txtKeeping = (
+                    f"Prune - KEEPING - {serie.title} ({serie.year})."
+                    f" Skipping."
+                )
+
+                self.writeLog(False, f"{txtKeeping}\n")
+                logging.info(txtKeeping)
+
+        else:
+            pass
 
         return False, False
 
