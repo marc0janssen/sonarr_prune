@@ -136,7 +136,7 @@ class SONARRPRUNE():
 
     def evalSerie(self, serie):
 
-        return True, True
+        return False, False
 
     def run(self):
         if not self.enabled_run:
