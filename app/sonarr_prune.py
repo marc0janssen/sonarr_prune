@@ -187,6 +187,12 @@ class SONARRPRUNE():
             print(serie.title)
             print(seasons)
 
+            for season in seasons:
+                print(f"totalEpisodeCount {season.totalEpisodeCount}")
+                print(f"episodeCount {season.episodeCount}")
+                print(f"episodeFileCount {season.episodeFileCount}")
+                print(f"percentOfEpisodes {season.percentOfEpisodes}")
+
         return False, False
 
     def run(self):
