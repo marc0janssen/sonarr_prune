@@ -1,4 +1,4 @@
-# Name: Radarr Prune
+# Name: Sonarr Prune
 # Coder: Marco Janssen (mastodon @marc0janssen@mastodon.online)
 # date: 2021-11-15 21:38:51
 # update: 2023-12-04 21:41:15
@@ -7,21 +7,19 @@ import logging
 import configparser
 import sys
 import shutil
-import glob
-import os
 import smtplib
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
-from datetime import datetime, timedelta
-from arrapi import RadarrAPI
+from datetime import datetime  # , timedelta
+from arrapi import SonarrAPI
 from chump import Application
 from socket import gaierror
 
 
-class RLP():
+class SONARRPRUNE():
 
     def __init__(self):
         logging.basicConfig(
@@ -32,9 +30,9 @@ class RLP():
         app_dir = "/app/"
         log_dir = "/logging/"
 
-        self.config_file = "radarr_prune.ini"
-        self.exampleconfigfile = "radarr_prune.ini.example"
-        self.log_file = "radarr_prune.log"
+        self.config_file = "sonarr_prune.ini"
+        self.exampleconfigfile = "sonarr_prune.ini.example"
+        self.log_file = "sonarr_prune.log"
         self.firstseen = ".firstseen"
 
         self.config_filePath = f"{config_dir}{self.config_file}"
@@ -47,23 +45,23 @@ class RLP():
                 self.config = configparser.ConfigParser()
                 self.config.read(self.config_filePath)
 
-                # RADARR
-                self.radarr_enabled = True if (
-                    self.config['RADARR']['ENABLED'] == "ON") else False
-                self.radarr_url = self.config['RADARR']['URL']
-                self.radarr_token = self.config['RADARR']['TOKEN']
+                # SONARR
+                self.sonarr_enabled = True if (
+                    self.config['SONARR']['ENABLED'] == "ON") else False
+                self.sonarr_url = self.config['SONARR']['URL']
+                self.sonarr_token = self.config['SONARR']['TOKEN']
                 self.tags_to_keep = list(
-                    self.config['RADARR']
+                    self.config['SONARR']
                     ['TAGS_KEEP_MOVIES_ANYWAY'].split(",")
                 )
 
                 # PRUNE
-                self.radarr_tags_no_exclusion = list(
+                self.sonarr_tags_no_exclusion = list(
                     self.config['PRUNE']
                     ['AUTO_NO_EXCLUSION_TAGS'].split(","))
                 # list(map(int, "list")) converts a list of string to
                 # a list of ints
-                self.radarr_months_no_exclusion = list(map(int, list(
+                self.sonarr_months_no_exclusion = list(map(int, list(
                     self.config['PRUNE']
                     ['AUTO_NO_EXCLUSION_MONTHS'].split(","))))
                 self.remove_after_days = int(
@@ -136,37 +134,6 @@ class RLP():
                             f'{config_dir}{self.exampleconfigfile}')
             sys.exit()
 
-    def sortOnTitle(self, e):
-        return e.sortTitle
-
-    def getTagLabeltoID(self, typeOfMedia):
-        # Put all tags in a dictonairy with pair label <=> ID
-
-        TagLabeltoID = {}
-        if typeOfMedia == "serie":
-            for tag in self.sonarrNode.all_tags():
-                # Add tag to lookup by it's name
-                TagLabeltoID[tag.label] = tag.id
-        else:
-            for tag in self.radarrNode.all_tags():
-                # Add tag to lookup by it's name
-                TagLabeltoID[tag.label] = tag.id
-
-        return TagLabeltoID
-
-    def getIDsforTagLabels(self, typeOfmedia, tagLabels):
-
-        TagLabeltoID = self.getTagLabeltoID(typeOfmedia)
-
-        # Get ID's for extending media
-        tagsIDs = []
-        for taglabel in tagLabels:
-            tagID = TagLabeltoID.get(taglabel)
-            if tagID:
-                tagsIDs.append(tagID)
-
-        return tagsIDs
-
     def writeLog(self, init, msg):
 
         try:
@@ -181,256 +148,6 @@ class RLP():
                 f"Can't write file {self.log_filePath}."
             )
 
-    def evalMovie(self, movie):
-
-        movieDownloadDate = None
-
-        fileList = glob.glob(movie.path + "/*")
-        for file in fileList:
-            if file.lower().endswith(tuple(self.video_extensions)):
-                # Get modfified date on .firstseen,
-                # Which is the downloaddate
-                # If not exist then create this file.
-
-                if not os.path.isfile(f"{movie.path}/{self.firstseen}"):
-                    with open(f"{movie.path}/{self.firstseen}", 'w') \
-                            as firstseen_file:
-                        firstseen_file.close()
-
-                        if not self.only_show_remove_messages:
-                            txtFirstSeen = (
-                                f"Prune - NEW - "
-                                f"{movie.title} ({movie.year})"
-                                f" is new."
-                            )
-
-                            self.writeLog(False, f"{txtFirstSeen}\n")
-                            logging.info(txtFirstSeen)
-
-                modifieddate = os.stat(
-                    f"{movie.path}/{self.firstseen}").st_mtime
-                movieDownloadDate = \
-                    datetime.fromtimestamp(modifieddate)
-
-                break
-
-        isRemoved, isPlanned = False, False
-
-        # Get ID's for keeping movies anyway
-        tagLabels_to_keep = self.tags_to_keep
-        tagsIDs_to_keep = self.getIDsforTagLabels(
-            "movie", tagLabels_to_keep)
-
-        # check if ONE of the "KEEP" tags is
-        # in the set of "MOVIE TAGS"
-        if set(movie.tagsIds) & set(tagsIDs_to_keep):
-            if not self.only_show_remove_messages:
-
-                txtKeeping = (
-                    f"Prune - KEEPING - {movie.title} ({movie.year})."
-                    f" Skipping."
-                )
-
-                self.writeLog(False, f"{txtKeeping}\n")
-                logging.info(txtKeeping)
-
-        else:
-
-            if not fileList or not movieDownloadDate:
-                # If FIle is not found, the movie is missing
-                # add will be skipped, These are probably
-                # movies in the future
-
-                if not self.only_show_remove_messages:
-                    txtMissing = (
-                        f"Prune - MISSING - "
-                        f"{movie.title} ({movie.year})"
-                        f" is not downloaded yet. Skipping."
-                    )
-
-                    self.writeLog(False, f"{txtMissing}\n")
-                    logging.info(txtMissing)
-
-            else:
-
-                if (
-                    set(movie.genres) &
-                    set(self.unwanted_genres)
-                ):
-                    if not self.dry_run:
-                        if self.radarr_enabled:
-
-                            self.radarrNode.delete_movie(
-                                movie_id=movie.id,
-                                tmdb_id=None,
-                                imdb_id=None,
-                                addImportExclusion=True,
-                                deleteFiles=self.delete_files
-                            )
-
-                    if self.delete_files:
-                        self.txtFilesDelete = \
-                            ", files deleted."
-                    else:
-                        self.txtFilesDelete = \
-                            ", files preserved."
-
-                    if self.pushover_enabled:
-                        self.message = self.userPushover.send_message(
-                            message=f"{movie.title} ({movie.year}) "
-                            f"Prune - UNWANTED - {movie.title} "
-                            f"({movie.year})"
-                            f"{self.txtFilesDelete}"
-                            f" - {movieDownloadDate}",
-                            sound=self.pushover_sound
-                        )
-
-                    txtUnwanted = (
-                        f"Prune - UNWANTED - {movie.title} ({movie.year})"
-                        f"{self.txtFilesDelete}"
-                        f" - {movieDownloadDate}"
-                    )
-
-                    self.writeLog(False, f"{txtUnwanted}\n")
-                    logging.info(txtUnwanted)
-
-                    isRemoved, isPlanned = True, False
-
-                    return isRemoved, isPlanned
-
-                now = datetime.now()
-
-                # check if there needs to be warn "DAYS" infront of removal
-                # 1. Are we still within the period before removel?
-                # 2. Is "NOW" less than "warning days" before removal?
-                # 3. is "NOW" more then "warning days - 1" before removal
-                #               (warn only 1 day)
-                if (
-                    timedelta(
-                        days=self.remove_after_days) >
-                    now - movieDownloadDate and
-                    movieDownloadDate +
-                    timedelta(
-                        days=self.remove_after_days) -
-                    now <= timedelta(days=self.warn_days_infront) and
-                    movieDownloadDate +
-                    timedelta(
-                        days=self.remove_after_days) -
-                    now > timedelta(days=self.warn_days_infront) -
-                    timedelta(days=1)
-                ):
-
-                    self.timeLeft = (
-                        movieDownloadDate +
-                        timedelta(
-                            days=self.remove_after_days) - now)
-
-                    txtTimeLeft = \
-                        'h'.join(str(self.timeLeft).split(':')[:2])
-                    if self.pushover_enabled:
-
-                        self.message = self.userPushover.send_message(
-                            message=f"Prune - {movie.title} "
-                            f"({movie.year}) "
-                            f"will be removed from server in "
-                            f"{txtTimeLeft}",
-                            sound=self.pushover_sound
-                        )
-
-                    txtWillBeRemoved = (
-                        f"Prune - WILL BE REMOVED - "
-                        f"{movie.title} ({movie.year})"
-                        f" in {txtTimeLeft}"
-                        f" - {movieDownloadDate}"
-                    )
-
-                    self.writeLog(False, f"{txtWillBeRemoved}\n")
-                    logging.info(txtWillBeRemoved)
-
-                    isRemoved, isPlanned = False, True
-
-                    return isRemoved, isPlanned
-
-                # Check is movie is older than "days set in INI"
-                if (
-                    now - movieDownloadDate >=
-                        timedelta(
-                            days=self.remove_after_days)
-                ):
-
-                    if not self.dry_run:
-                        if self.radarr_enabled:
-
-                            # Get ID's for exclusion list movies
-                            tagLabels_for_no_exclusion = \
-                                self.radarr_tags_no_exclusion
-                            tagsIDs_for_no_exclusion = \
-                                self.getIDsforTagLabels(
-                                    "movie", tagLabels_for_no_exclusion)
-
-                            # Check if no_exclusion_tags are in movie tags
-                            exclusiontagsfound = set(movie.tagsIds) & set(
-                                tagsIDs_for_no_exclusion)
-
-                            # Check is the current month is in the
-                            # no_exclusion_months list
-                            monthfound = \
-                                movieDownloadDate.month in \
-                                self.radarr_months_no_exclusion
-
-                            self.radarrNode.delete_movie(
-                                movie_id=movie.id,
-                                tmdb_id=None,
-                                imdb_id=None,
-                                addImportExclusion=not
-                                (monthfound or exclusiontagsfound),
-                                deleteFiles=self.delete_files
-                            )
-
-                    if self.delete_files:
-                        self.txtFilesDelete = \
-                            ", files deleted."
-                    else:
-                        self.txtFilesDelete = \
-                            ", files preserved."
-
-                    if self.pushover_enabled:
-                        self.message = self.userPushover.send_message(
-                            message=f"{movie.title} ({movie.year}) "
-                            f"Prune - REMOVED - {movie.title} "
-                            f"({movie.year})"
-                            f"{self.txtFilesDelete}"
-                            f" - {movieDownloadDate}",
-                            sound=self.pushover_sound
-                        )
-
-                    txtRemoved = (
-                        f"Prune - REMOVED - {movie.title} ({movie.year})"
-                        f"{self.txtFilesDelete}"
-                        f" - {movieDownloadDate}"
-                    )
-
-                    self.writeLog(False, f"{txtRemoved}\n")
-                    logging.info(txtRemoved)
-
-                    isRemoved, isPlanned = True, False
-
-                else:
-                    if not self.only_show_remove_messages:
-                        txtActive = (
-                            f"Prune - ACTIVE - "
-                            f"{movie.title} ({movie.year})"
-                            f" is active. Skipping."
-                            f" - {movieDownloadDate}"
-                        )
-
-                        self.writeLog(False, f"{txtActive}\n")
-                        logging.info(txtActive)
-
-                    isRemoved, isPlanned = False, False
-
-        return isRemoved, isPlanned
-
     def run(self):
         if not self.enabled_run:
             logging.info(
@@ -438,14 +155,14 @@ class RLP():
             self.writeLog(False, "Prune - Library purge disabled.\n")
             sys.exit()
 
-        # Connect to Radarr
-        if self.radarr_enabled:
-            self.radarrNode = RadarrAPI(
-                self.radarr_url, self.radarr_token)
+        # Connect to Sonarr
+        if self.sonarr_enabled:
+            self.sonarrNode = SonarrAPI(
+                self.sonarr_url, self.sonarr_token)
         else:
             logging.info(
-                "Prune - Radarr disabled in INI, exting.")
-            self.writeLog(False, "Radarr disabled in INI, exting.\n")
+                "Prune - Sonarr disabled in INI, exting.")
+            self.writeLog(False, "Sonarr disabled in INI, exting.\n")
             sys.exit()
 
         if self.dry_run:
@@ -463,14 +180,14 @@ class RLP():
             self.userPushover = \
                 self.appPushover.get_user(self.pushover_user_key)
 
-        # Get all movies from the server.
+        # Get all Series from the server.
         media = None
-        if self.radarr_enabled:
-            media = self.radarrNode.all_movies()
+        if self.sonarr_enabled:
+            media = self.sonarrNode.all_series()
 
         if self.verbose_logging:
-            logging.info("Prune - Radarr Prune started.")
-        self.writeLog(True, "Prune - Radarr Prune started.\n")
+            logging.info("Prune - Sonarr Prune started.")
+        self.writeLog(True, "Prune - Sonarr Prune started.\n")
 
         # Make sure the library is not empty.
         numDeleted = 0
@@ -478,8 +195,8 @@ class RLP():
         isRemoved, isPlanned = False, False
         if media:
             media.sort(key=self.sortOnTitle)  # Sort the list on Title
-            for movie in media:
-                isRemoved, isPlanned = self.evalMovie(movie)
+            for serie in media:
+                isRemoved, isPlanned = self.evalSerie(serie)
                 if isRemoved:
                     numDeleted += 1
                 if isPlanned:
@@ -513,7 +230,7 @@ class RLP():
             message["From"] = sender_email
             message['To'] = ", ".join(receiver_email)
             message['Subject'] = (
-                f"Radarr - Pruned {numDeleted} movies "
+                f"Sonarr - Pruned {numDeleted} movies "
                 f"and {numNotifified} planned for removal"
             )
 
@@ -528,7 +245,7 @@ class RLP():
             message.attach(obj)
 
             body = (
-                "Hi,\n\n Attached is the prunelog from Prxlovarr.\n\n"
+                "Hi,\n\n Attached is the prunelog from sonarr Prune.\n\n"
                 "Have a nice day.\n\n"
             )
 
@@ -573,6 +290,6 @@ class RLP():
 
 if __name__ == '__main__':
 
-    rlp = RLP()
-    rlp.run()
-    rlp = None
+    sonarrprune = SONARRPRUNE()
+    sonarrprune.run()
+    sonarrprune = None
