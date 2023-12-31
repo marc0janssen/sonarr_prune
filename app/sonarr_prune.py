@@ -282,7 +282,7 @@ class SONARRPRUNE():
 
                     # Check is movie is older than "days set in INI"
                     if (
-                        now - seasonDownloadDate >=
+                        not now - seasonDownloadDate >=
                             timedelta(
                                 days=self.remove_after_days)
                     ):
@@ -388,7 +388,7 @@ class SONARRPRUNE():
                     numNotifified += 1
 
         txtEnd = (
-            f"Prune - There were {numDeleted} episodes removed."
+            f"Prune - There were {numDeleted} seaons removed."
         )
 
         if self.pushover_enabled:
