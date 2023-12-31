@@ -183,7 +183,8 @@ class SONARRPRUNE():
                 logging.info(txtKeeping)
 
         else:
-            pass
+            seasons = serie.seasons
+            print(seasons)
 
         return False, False
 
