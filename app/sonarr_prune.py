@@ -131,6 +131,9 @@ class SONARRPRUNE():
                 f"Can't write file {self.log_filePath}."
             )
 
+    def sortOnTitle(self, e):
+        return e.sortTitle
+
     def run(self):
         if not self.enabled_run:
             logging.info(
