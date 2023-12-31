@@ -8,6 +8,7 @@ import configparser
 import sys
 import shutil
 import smtplib
+import os
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -33,7 +34,7 @@ class SONARRPRUNE():
         self.config_file = "sonarr_prune.ini"
         self.exampleconfigfile = "sonarr_prune.ini.example"
         self.log_file = "sonarr_prune.log"
-        self.firstseen = ".firstseen"
+        self.firstcomplete = ".firstcomplete"
 
         self.config_filePath = f"{config_dir}{self.config_file}"
         self.log_filePath = f"{log_dir}{self.log_file}"
@@ -194,7 +195,26 @@ class SONARRPRUNE():
                 print(f"percentOfEpisodes {season.percentOfEpisodes}")
 
                 if season.percentOfEpisodes == 100.0:
-                    print("OKOK")
+
+                    if not os.path.isfile(f"{serie.path}/{self.firstcomplete}"):
+                        with open(f"{serie.path}/{self.firstcomplete}", 'w') \
+                                as firstcomplete_file:
+                            firstcomplete_file.close()
+
+                            if not self.only_show_remove_messages:
+                                txtFirstSeen = (
+                                    f"Prune - COMPLETE - "
+                                    f"{serie.title} {season.seasonNumber} ({serie.year})"
+                                )
+
+                                self.writeLog(False, f"{txtFirstSeen}\n")
+                                logging.info(txtFirstSeen)
+
+                    modifieddate = os.stat(
+                        f"{serie.path}/{self.firstcomplete}").st_mtime
+                    movieDownloadDate = \
+                        datetime.fromtimestamp(modifieddate)
+                    print(movieDownloadDate)
 
         return False, False
 
