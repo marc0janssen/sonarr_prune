@@ -136,8 +136,6 @@ class SONARRPRUNE():
 
     def evalSerie(self, serie):
 
-        print(serie)
-
         return False, False
 
     def run(self):
