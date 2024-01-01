@@ -270,9 +270,12 @@ class SONARRPRUNE():
                     if self.sonarr_enabled:
 
                         print("DELETE SEASON")
-
-                        os.removedirs(f"{serie.path}/{seasonDir}//marco")
-                        print(f"{serie.path}/{seasonDir}/{self.firstcomplete}")
+                        
+                        try:
+                            os.removedirs(f"{serie.path}/{seasonDir}//marco")
+                            print(f"{serie.path}/{seasonDir}/{self.firstcomplete}")
+                        except FileNotFoundError:
+                            pass
 
                 if self.pushover_enabled:
                     self.message = self.userPushover.send_message(
