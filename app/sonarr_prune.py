@@ -168,9 +168,6 @@ class SONARRPRUNE():
 
     def evalSeason(self, serie, season):
 
-        print(serie.path)
-        print(serie.path.replace("/content/video/series", "/content/video/seriesdv"))
-
         isRemoved, isPlanned = False, False
         seasonDownloadDate = None
 
@@ -285,6 +282,20 @@ class SONARRPRUNE():
                                 f"Error removing {serie.title} "
                                 f"season {season.seasonNumber}: {error}"
                                 )
+                        try:
+                            # Delete Season
+                            seriesdvPath = serie.path.replace(
+                                "/content/video/series",
+                                "/content/video/seriesdv"
+                                )
+
+                            os.removedirs(f"{seriesdvPath}/{seasonDir}")
+
+                        except FileNotFoundError:
+                            pass
+
+                        except OSError:
+                            pass
 
                 if self.pushover_enabled:
                     self.message = self.userPushover.send_message(
