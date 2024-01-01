@@ -171,17 +171,18 @@ class SONARRPRUNE():
         isRemoved, isPlanned = False, False
         seasonDownloadDate = None
 
+        seasonDir = "Specials" if season.seasonNumber == 0 \
+            else f"Season {season.seasonNumber}"
+
         if season.percentOfEpisodes == 100.0:
 
             print("100.0")
 
             if not os.path.isfile(
-                f"{serie.path}/Season {season.seasonNumber}/"
-                    f"{self.firstcomplete}"):
+                    f"{serie.path}/{seasonDir}/{self.firstcomplete}"):
 
                 with open(
-                    f"{serie.path}/Season {season.seasonNumber}/"
-                    f"{self.firstcomplete}", 'w') \
+                    f"{serie.path}/{seasonDir}/{self.firstcomplete}", 'w') \
                         as firstcomplete_file:
                     firstcomplete_file.close()
 
@@ -197,7 +198,7 @@ class SONARRPRUNE():
                         logging.info(txtFirstSeen)
 
             modifieddate = os.stat(
-                f"{serie.path}/Season {season.seasonNumber}/"
+                f"{serie.path}/{seasonDir}/"
                 f"{self.firstcomplete}").st_mtime
 
             seasonDownloadDate = \
@@ -273,11 +274,7 @@ class SONARRPRUNE():
                         print("DELETE SEASON")
 
                         # os.removedirs(f"{serie.path}/marco")
-
-                        if season.seasonNumber == 0:
-                            print(f"{serie.path}/Specials/{self.firstcomplete}")
-                        else:
-                            print(f"{serie.path}/Season {season.seasonNumber}/{self.firstcomplete}")
+                        print(f"{serie.path}/{seasonDir}/{self.firstcomplete}")
 
                 if self.pushover_enabled:
                     self.message = self.userPushover.send_message(
