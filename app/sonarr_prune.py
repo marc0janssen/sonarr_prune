@@ -168,6 +168,8 @@ class SONARRPRUNE():
 
     def evalSeason(self, serie, season):
 
+        print(serie.path)
+
         isRemoved, isPlanned = False, False
         seasonDownloadDate = None
 
