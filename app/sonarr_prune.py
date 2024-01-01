@@ -385,23 +385,23 @@ class SONARRPRUNE():
                         self.writeLog(False, f"{txtKeeping}\n")
                         logging.info(txtKeeping)
 
-                    else:
-                        seasons = serie.seasons
+                else:
+                    seasons = serie.seasons
 
-                        subNumDeleted = 0
-                        subNnumNotifified = 0
+                    subNumDeleted = 0
+                    subNnumNotifified = 0
 
-                        for season in seasons:
+                    for season in seasons:
 
-                            isRemoved, isPlanned = \
-                                self.evalSeason(serie, season)
-                            if isRemoved:
-                                subNumDeleted += 1
-                            if isPlanned:
-                                subNnumNotifified += 1
+                        isRemoved, isPlanned = \
+                            self.evalSeason(serie, season)
+                        if isRemoved:
+                            subNumDeleted += 1
+                        if isPlanned:
+                            subNnumNotifified += 1
 
-                        numDeleted += subNumDeleted
-                        numNotifified += subNnumNotifified
+                    numDeleted += subNumDeleted
+                    numNotifified += subNnumNotifified
 
         txtEnd = (
             f"Prune - There were {numDeleted} seaons removed."
