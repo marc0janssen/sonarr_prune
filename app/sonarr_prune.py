@@ -261,19 +261,15 @@ class SONARRPRUNE():
 
             # Check is season is older than "days set in INI"
             if (
-                not now - seasonDownloadDate >=
+                now - seasonDownloadDate >=
                     timedelta(
                         days=self.remove_after_days)
             ):
 
                 if not self.dry_run:
                     if self.sonarr_enabled:
-
-                        print("DELETE SEASON")
-                        
                         try:
-                            os.removedirs(f"{serie.path}/{seasonDir}//marco")
-                            print(f"{serie.path}/{seasonDir}/{self.firstcomplete}")
+                            os.removedirs(f"{serie.path}/{seasonDir}/aa")
                         except FileNotFoundError:
                             pass
 
