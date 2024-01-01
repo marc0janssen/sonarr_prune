@@ -386,6 +386,9 @@ class SONARRPRUNE():
                         logging.info(txtKeeping)
 
                 else:
+
+                    print("here")
+
                     seasons = serie.seasons
 
                     subNumDeleted = 0
