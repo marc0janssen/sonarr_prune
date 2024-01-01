@@ -169,6 +169,7 @@ class SONARRPRUNE():
     def evalSeason(self, serie, season):
 
         print(serie.path)
+        print(serie.path.replace("series", "seriesdv"))
 
         isRemoved, isPlanned = False, False
         seasonDownloadDate = None
