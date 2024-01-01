@@ -171,6 +171,8 @@ class SONARRPRUNE():
         isRemoved, isPlanned = False, False
         seasonDownloadDate = None
 
+        print("pre")
+
         if season.percentOfEpisodes == 100.0:
 
             print("ok")
