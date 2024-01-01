@@ -269,9 +269,19 @@ class SONARRPRUNE():
                 if not self.dry_run:
                     if self.sonarr_enabled:
                         try:
-                            os.removedirs(f"{serie.path}/{seasonDir}/aa")
+                            # Delete Season
+                            os.removedirs(f"{serie.path}/{seasonDir}")
+
                         except FileNotFoundError:
-                            pass
+                            logging.error(
+                                f"Season Not Found {serie.title} "
+                                f"season {season.seasonNumber}"
+                                )
+                        except OSError as error:
+                            logging.error(
+                                f"Error removing {serie.title} "
+                                f"season {season.seasonNumber}: {error}"
+                                )
 
                 if self.pushover_enabled:
                     self.message = self.userPushover.send_message(
