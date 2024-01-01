@@ -173,6 +173,8 @@ class SONARRPRUNE():
 
         if season.percentOfEpisodes == 100.0:
 
+            print("ok")
+
             if not os.path.isfile(
                 f"{serie.path}/Season {season.seasonNumber}/"
                     f"{self.firstcomplete}"):
