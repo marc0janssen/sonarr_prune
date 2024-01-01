@@ -176,8 +176,6 @@ class SONARRPRUNE():
 
         if season.percentOfEpisodes == 100.0:
 
-            print("100.0")
-
             if not os.path.isfile(
                     f"{serie.path}/{seasonDir}/{self.firstcomplete}"):
 
@@ -273,7 +271,7 @@ class SONARRPRUNE():
 
                         print("DELETE SEASON")
 
-                        # os.removedirs(f"{serie.path}/marco")
+                        os.removedirs(f"{serie.path}/{seasonDir}//marco")
                         print(f"{serie.path}/{seasonDir}/{self.firstcomplete}")
 
                 if self.pushover_enabled:
