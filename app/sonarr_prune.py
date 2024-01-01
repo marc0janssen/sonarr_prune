@@ -171,11 +171,7 @@ class SONARRPRUNE():
         isRemoved, isPlanned = False, False
         seasonDownloadDate = None
 
-        print("pre")
-
         if season.percentOfEpisodes == 100.0:
-
-            print("ok")
 
             if not os.path.isfile(
                 f"{serie.path}/Season {season.seasonNumber}/"
@@ -386,8 +382,6 @@ class SONARRPRUNE():
                         logging.info(txtKeeping)
 
                 else:
-
-                    print("here")
 
                     seasons = serie.seasons
 
