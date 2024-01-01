@@ -282,7 +282,7 @@ class SONARRPRUNE():
 
                     # Check is season is older than "days set in INI"
                     if (
-                        now - seasonDownloadDate >=
+                        not now - seasonDownloadDate >=
                             timedelta(
                                 days=self.remove_after_days)
                     ):
@@ -291,6 +291,10 @@ class SONARRPRUNE():
                             if self.sonarr_enabled:
 
                                 print("DELETE SEASON")
+
+                                # os.removedirs(f"{serie.path}/marco")
+                                print(f"{serie.path}/marco")
+
 
                         if self.pushover_enabled:
                             self.message = self.userPushover.send_message(
