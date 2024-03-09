@@ -130,7 +130,7 @@ class SONARRPRUNE():
             'X-Api-Key': self.sonarr_token,
             'Content-Type': 'application/json'
             }
-        payload = {'name': 'RefreshSeries', 'seriesId': 'all'}
+        payload = {'name': 'refreshseries'}
         endpoint = "/api/command"
 
         print(series.id)
