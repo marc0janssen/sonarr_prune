@@ -138,6 +138,8 @@ class SONARRPRUNE():
 
         url = f"{self.emby_url}/Emby/Library/Refresh?api_key={self.emby_token}"
 
+        print (url)
+
         response = requests.get(url)
 
         if response.status_code == 200:
