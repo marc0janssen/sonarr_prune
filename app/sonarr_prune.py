@@ -129,6 +129,8 @@ class SONARRPRUNE():
         headers = {"X-Api-Key": self.sonarr_token}
         payload = {"name": "RescanSeries", "seriesId": series.id}
 
+        print(series.id)
+
         response = requests.post(
             self.sonarr_url, headers=headers, json=payload)
 
