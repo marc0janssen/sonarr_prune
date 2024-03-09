@@ -176,6 +176,8 @@ class SONARRPRUNE():
 
         print(f"{serie.title}: {season.totalEpisodeCount} == {season.episodeCount}")
 
+        print(self.sonarrNode.all_commands())
+
         if season.totalEpisodeCount == season.episodeCount:
 
             if not os.path.isfile(
