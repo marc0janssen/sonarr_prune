@@ -138,10 +138,10 @@ class SONARRPRUNE():
         response = requests.post(
             self.sonarr_url + endpoint, json=payload, headers=headers)
 
-        if response.status_code == 200:
-            print("Database update triggered successfully.")
+        if response.status_code == 201:
+            logging.info("Database update triggered successfully.")
         else:
-            print("Failed to trigger database update. Status code:", response.status_code)
+            logging.error("Failed to trigger database update. Status code:", response.status_code)
 
     def writeLog(self, init, msg):
 
