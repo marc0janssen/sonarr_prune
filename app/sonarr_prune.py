@@ -174,7 +174,7 @@ class SONARRPRUNE():
         seasonDir = "Specials" if season.seasonNumber == 0 \
             else f"Season {season.seasonNumber}"
 
-        print(f"{season.totalEpisodeCount} == {season.episodeCount}")
+        print(f"{serie.title}: {season.totalEpisodeCount} == {season.episodeCount}")
 
         if season.totalEpisodeCount == season.episodeCount:
 
