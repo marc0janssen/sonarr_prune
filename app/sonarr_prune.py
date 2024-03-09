@@ -54,10 +54,12 @@ class SONARRPRUNE():
                     self.config['SONARR']['ENABLED'] == "ON") else False
                 self.sonarr_url = self.config['SONARR']['URL']
                 self.sonarr_token = self.config['SONARR']['TOKEN']
-                self.tags_to_keep = list(
-                    self.config['SONARR']
-                    ['TAGS_KEEP_MOVIES_ANYWAY'].split(",")
-                )
+
+                # SONARR
+                self.sonarr1_enabled = True if (
+                    self.config['SONARR1']['ENABLED'] == "ON") else False
+                self.sonarr1_url = self.config['SONARR1']['URL']
+                self.sonarr1_token = self.config['SONARR1']['TOKEN']
 
                 # PRUNE
                 # list(map(int, "list")) converts a list of string to
@@ -68,6 +70,10 @@ class SONARRPRUNE():
                     self.config['PRUNE']['WARN_DAYS_INFRONT'])
                 self.dry_run = True if (
                     self.config['PRUNE']['DRY_RUN'] == "ON") else False
+                self.tags_to_keep = list(
+                    self.config['PRUNE']
+                    ['TAGS_KEEP_MOVIES_ANYWAY'].split(",")
+                )
                 self.enabled_run = True if (
                     self.config['PRUNE']['ENABLED'] == "ON") else False
                 self.only_show_remove_messages = True if (
@@ -137,10 +143,30 @@ class SONARRPRUNE():
             self.sonarr_url + endpoint, json=payload, headers=headers)
 
         if response.status_code == 201:
-            logging.info("Database update triggered successfully.")
+            logging.info(
+                "Database update triggered successfully for Sonarr (HD).")
         else:
             logging.error(
-                "Failed to trigger database update. Status code:",
+                "Failed to trigger database update for Sonarr (HD). "
+                "Status code:",
+                response.status_code
+                )
+
+        headers = {
+            'X-Api-Key': self.sonarr1_token,
+            'Content-Type': 'application/json'
+            }
+
+        response = requests.post(
+            self.sonarr1_url + endpoint, json=payload, headers=headers)
+
+        if response.status_code == 201:
+            logging.info(
+                "Database update triggered successfully for Sonarr (DV).")
+        else:
+            logging.error(
+                "Failed to trigger database update for Sonarr (DV). "
+                "Status code:",
                 response.status_code
                 )
 
@@ -306,23 +332,25 @@ class SONARRPRUNE():
                                 f"Error removing {serie.title} "
                                 f"season {season.seasonNumber}: {error}"
                                 )
-                        try:
-                            # Delete Season
-                            seriesdvPath = serie.path.replace(
-                                "/content/video/series",
-                                "/content/video/seriesdv"
-                                )
 
-                            shutil.rmtree(f"{seriesdvPath}/{seasonDir}")
+                        if self.sonarr1_enabled:
+                            try:
+                                # Delete Season
+                                seriesdvPath = serie.path.replace(
+                                    "/content/video/series",
+                                    "/content/video/seriesdv"
+                                    )
 
-                        except FileNotFoundError:
-                            pass
+                                shutil.rmtree(f"{seriesdvPath}/{seasonDir}")
 
-                        except OSError as error:
-                            logging.error(
-                                f"Error removing DV {serie.title} "
-                                f"season {season.seasonNumber}: {error}"
-                                )
+                            except FileNotFoundError:
+                                pass
+
+                            except OSError as error:
+                                logging.error(
+                                    f"Error removing DV {serie.title} "
+                                    f"season {season.seasonNumber}: {error}"
+                                    )
 
                 if self.pushover_enabled:
                     self.message = self.userPushover.send_message(
@@ -381,6 +409,15 @@ class SONARRPRUNE():
                 "Prune - Sonarr disabled in INI, exting.")
             self.writeLog(False, "Sonarr disabled in INI, exting.\n")
             sys.exit()
+
+        # Connect to Sonarr1
+        if self.sonarr1_enabled:
+            self.sonarrNode1 = SonarrAPI(
+                self.sonarr1_url, self.sonarr1_token)
+        else:
+            logging.info(
+                "Prune - Sonarr1 disabled in INI, exting.")
+            self.writeLog(False, "Sonarr disabled in INI, exting.\n")
 
         if self.dry_run:
             logging.info(
