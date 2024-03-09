@@ -125,15 +125,13 @@ class SONARRPRUNE():
             sys.exit()
 
     # Trigger a database update in Sonarr
-    def trigger_database_update(self, series):
+    def trigger_database_update(self):
         headers = {
             'X-Api-Key': self.sonarr_token,
             'Content-Type': 'application/json'
             }
         payload = {'name': 'refreshseries'}
         endpoint = "/api/v3/command"
-
-        print(series.id)
 
         response = requests.post(
             self.sonarr_url + endpoint, json=payload, headers=headers)
@@ -292,6 +290,9 @@ class SONARRPRUNE():
 
                 if not self.dry_run:
                     if self.sonarr_enabled:
+
+                        print("OKOK")
+
                         try:
                             # Delete Season
                             shutil.rmtree(f"{serie.path}/{seasonDir}")
@@ -536,7 +537,7 @@ class SONARRPRUNE():
                     "SMTP error occurred: " + str(e))
 
         # Call the function to trigger a database update
-        self.trigger_database_update(serie)
+        self.trigger_database_update()
 
 
 if __name__ == '__main__':
