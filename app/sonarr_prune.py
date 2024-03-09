@@ -10,6 +10,9 @@ import shutil
 import smtplib
 import os
 
+import requests
+
+
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
@@ -121,6 +124,19 @@ class SONARRPRUNE():
                             f'{config_dir}{self.exampleconfigfile}')
             sys.exit()
 
+    # Trigger a database update in Sonarr
+    def trigger_database_update(self):
+        headers = {"X-Api-Key": self.sonarr_token}
+        payload = {"name": "RescanSeries"}
+
+        response = requests.post(
+            self.sonarr_url, headers=headers, json=payload)
+
+        if response.status_code == 200:
+            print("Database update triggered successfully.")
+        else:
+            print("Failed to trigger database update. Status code:", response.status_code)
+
     def writeLog(self, init, msg):
 
         try:
@@ -176,7 +192,8 @@ class SONARRPRUNE():
 
         print(f"{serie.title}: {season.totalEpisodeCount} == {season.episodeCount}")
 
-        print(self.sonarrNode.all_commands())
+        # Call the function to trigger a database update
+        self.trigger_database_update()
 
         if season.totalEpisodeCount == season.episodeCount:
 
