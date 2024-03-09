@@ -131,7 +131,7 @@ class SONARRPRUNE():
             "Content-Type": "application/json"
             }
         payload = {"name": "RescanSeries", "seriesId": "all"}
-        endpoint = "/command"
+        endpoint = "/api/command"
 
         print(series.id)
 
