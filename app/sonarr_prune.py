@@ -136,11 +136,11 @@ class SONARRPRUNE():
 
     def trigger_database_update_emby(self):
 
+        headers = {}
+        data = {}
         url = f"{self.emby_url}/Emby/Library/Refresh?api_key={self.emby_token}"
 
-        print(url)
-
-        response = requests.get(url)
+        response = requests.post(url, data, headers)
 
         if response.status_code == 200:
             logging.info(
