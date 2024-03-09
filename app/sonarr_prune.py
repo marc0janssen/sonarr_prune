@@ -131,7 +131,7 @@ class SONARRPRUNE():
             'Content-Type': 'application/json'
             }
         payload = {'name': 'refreshseriesrefreshseries'}
-        endpoint = "/api/command"
+        endpoint = "/api/v3/command"
 
         print(series.id)
 
