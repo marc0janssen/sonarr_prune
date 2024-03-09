@@ -62,8 +62,8 @@ class SONARRPRUNE():
                 self.sonarr2_token = self.config['SONARR2']['TOKEN']
 
                 # EMBY
-                self.emby_url = self.config['EMBY']['EMBY_HOST']
-                self.emby_token = self.config['EMBY']['EMBY_SONARR_APIKEY']
+                self.emby_url = self.config['EMBY']['URL']
+                self.emby_token = self.config['EMBY']['TOKEN']
 
                 # PRUNE
                 # list(map(int, "list")) converts a list of string to
