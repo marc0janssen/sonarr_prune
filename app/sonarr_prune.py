@@ -270,7 +270,7 @@ class SONARRPRUNE():
                     if self.sonarr_enabled:
                         try:
                             # Delete Season
-                            os.removedirs(f"{serie.path}/{seasonDir}")
+                            shutil.rmtree(f"{serie.path}/{seasonDir}")
 
                         except FileNotFoundError:
                             logging.error(
@@ -289,13 +289,16 @@ class SONARRPRUNE():
                                 "/content/video/seriesdv"
                                 )
 
-                            os.removedirs(f"{seriesdvPath}/{seasonDir}")
+                            shutil.rmtree(f"{seriesdvPath}/{seasonDir}")
 
                         except FileNotFoundError:
                             pass
 
-                        except OSError:
-                            pass
+                        except OSError as error:
+                            logging.error(
+                                f"Error removing DV {serie.title} "
+                                f"season {season.seasonNumber}: {error}"
+                                )
 
                 if self.pushover_enabled:
                     self.message = self.userPushover.send_message(
