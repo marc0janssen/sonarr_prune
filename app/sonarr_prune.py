@@ -15,7 +15,7 @@ from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 from datetime import datetime, timedelta
-from arrapi import SonarrAPI
+from arrapi import SonarrAPI as SonarrAPP
 from pyarr import SonarrAPI as SonarrCMD
 from chump import Application
 from socket import gaierror
@@ -356,7 +356,7 @@ class SONARRPRUNE():
 
         # Connect to Sonarr
         if self.sonarr_enabled:
-            self.sonarrNode = SonarrAPI(
+            self.sonarrNode = SonarrAPP(
                 self.sonarr_url, self.sonarr_token)
 
             self.SonarrCommand = SonarrCMD(
