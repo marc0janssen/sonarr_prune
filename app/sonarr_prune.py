@@ -146,10 +146,7 @@ class SONARRPRUNE():
             logging.info(
                 "Database update triggered successfully for Emby.")
         else:
-            logging.error(
-                "Failed to trigger database update for Emby. "
-                "Status code:", response.status_code
-                )
+            logging.error("Failed to trigger database update for Emby. Status code:", response.status_code)
 
     # Trigger a database update in Sonarr
     def trigger_database_update(self):
