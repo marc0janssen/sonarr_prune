@@ -127,10 +127,10 @@ class SONARRPRUNE():
     # Trigger a database update in Sonarr
     def trigger_database_update(self, series):
         headers = {
-            "X-Api-Key": self.sonarr_token,
-            "Content-Type": "application/json"
+            'X-Api-Key': self.sonarr_token,
+            'Content-Type': 'application/json'
             }
-        payload = {"name": "RefreshSeries", "seriesId": "all"}
+        payload = {'name': 'RefreshSeries', 'seriesId': "all"}
         endpoint = "/api/command"
 
         print(series.id)
