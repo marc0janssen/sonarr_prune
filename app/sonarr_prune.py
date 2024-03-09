@@ -291,11 +291,12 @@ class SONARRPRUNE():
                 if not self.dry_run:
                     if self.sonarr_enabled:
 
-                        print("OKOK")
-
                         try:
+
+                            print("OKOK")
+
                             # Delete Season
-                            shutil.rmtree(f"{serie.path}/{seasonDir}")
+                            # shutil.rmtree(f"{serie.path}/{seasonDir}")
 
                         except FileNotFoundError:
                             logging.error(
