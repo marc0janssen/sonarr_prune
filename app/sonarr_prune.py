@@ -55,11 +55,15 @@ class SONARRPRUNE():
                 self.sonarr_url = self.config['SONARR']['URL']
                 self.sonarr_token = self.config['SONARR']['TOKEN']
 
-                # SONARR
+                # SONARR2
                 self.sonarr2_enabled = True if (
                     self.config['SONARR2']['ENABLED'] == "ON") else False
                 self.sonarr2_url = self.config['SONARR2']['URL']
                 self.sonarr2_token = self.config['SONARR2']['TOKEN']
+
+                # EMBY
+                self.emby_url = self.config['EMBY']['EMBY_HOST']
+                self.emby_token = self.config['EMBY']['EMBY_SONARR_APIKEY']
 
                 # PRUNE
                 # list(map(int, "list")) converts a list of string to
@@ -129,6 +133,22 @@ class SONARRPRUNE():
             shutil.copyfile(f'{app_dir}{self.exampleconfigfile}',
                             f'{config_dir}{self.exampleconfigfile}')
             sys.exit()
+
+    def trigger_database_update_emby(self):
+
+        url = f"{self.emby_url}/Emby/Library/Refresh?api_key={self.emby_token}"
+
+        response = requests.post(url)
+
+        if response.status_code == 200:
+            logging.info(
+                "Database update triggered successfully for Emby.")
+        else:
+            logging.error(
+                "Failed to trigger database update for Emby. "
+                "Status code:",
+                response.status_code
+                )
 
     # Trigger a database update in Sonarr
     def trigger_database_update(self):
@@ -573,6 +593,7 @@ class SONARRPRUNE():
 
         # Call the function to trigger a database update
         self.trigger_database_update()
+        self.trigger_database_update_emby()
 
 
 if __name__ == '__main__':
