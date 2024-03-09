@@ -126,13 +126,17 @@ class SONARRPRUNE():
 
     # Trigger a database update in Sonarr
     def trigger_database_update(self, series):
-        headers = {"X-Api-Key": self.sonarr_token}
-        payload = {"name": "RescanSeries", "seriesId": series.id}
+        headers = {
+            "X-Api-Key": self.sonarr_token,
+            "Content-Type": "application/json"
+            }
+        payload = {"name": "RescanSeries", "seriesId": "all"}
+        endpoint = "/command"
 
         print(series.id)
 
         response = requests.post(
-            self.sonarr_url, headers=headers, json=payload)
+            self.sonarr_url + endpoint, json=payload, headers=headers)
 
         if response.status_code == 200:
             print("Database update triggered successfully.")
