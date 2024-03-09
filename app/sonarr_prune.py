@@ -139,7 +139,10 @@ class SONARRPRUNE():
         if response.status_code == 201:
             logging.info("Database update triggered successfully.")
         else:
-            logging.error("Failed to trigger database update. Status code:", response.status_code)
+            logging.error(
+                "Failed to trigger database update. Status code:",
+                response.status_code
+                )
 
     def writeLog(self, init, msg):
 
@@ -194,9 +197,7 @@ class SONARRPRUNE():
         seasonDir = "Specials" if season.seasonNumber == 0 \
             else f"Season {season.seasonNumber}"
 
-        print(f"{serie.title}: {season.totalEpisodeCount} == {season.episodeCount}")
-
-        if season.totalEpisodeCount != season.episodeCount:
+        if season.totalEpisodeCount == season.episodeCount:
 
             if not os.path.isfile(
                     f"{serie.path}/{seasonDir}/{self.firstcomplete}"):
@@ -292,11 +293,8 @@ class SONARRPRUNE():
                     if self.sonarr_enabled:
 
                         try:
-
-                            print("OKOK")
-
                             # Delete Season
-                            # shutil.rmtree(f"{serie.path}/{seasonDir}")
+                            shutil.rmtree(f"{serie.path}/{seasonDir}")
 
                         except FileNotFoundError:
                             logging.error(
@@ -318,8 +316,6 @@ class SONARRPRUNE():
                             shutil.rmtree(f"{seriesdvPath}/{seasonDir}")
 
                         except FileNotFoundError:
-                            print(f"{seriesdvPath}/{seasonDir}")
-                            logging.error("HEREHERE")
                             pass
 
                         except OSError as error:
