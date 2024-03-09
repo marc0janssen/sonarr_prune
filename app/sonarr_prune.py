@@ -10,13 +10,15 @@ import shutil
 import smtplib
 import os
 
+import requests
+
+
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 from datetime import datetime, timedelta
-from arrapi import SonarrAPI as SonarrAPP
-from pyarr import SonarrAPI as SonarrCMD
+from arrapi import SonarrAPI
 from chump import Application
 from socket import gaierror
 
@@ -122,6 +124,25 @@ class SONARRPRUNE():
                             f'{config_dir}{self.exampleconfigfile}')
             sys.exit()
 
+    # Trigger a database update in Sonarr
+    def trigger_database_update(self, series):
+        headers = {
+            'X-Api-Key': self.sonarr_token,
+            'Content-Type': 'application/json'
+            }
+        payload = {'name': 'refreshseriesrefreshseries'}
+        endpoint = "/api/command"
+
+        print(series.id)
+
+        response = requests.post(
+            self.sonarr_url + endpoint, json=payload, headers=headers)
+
+        if response.status_code == 200:
+            print("Database update triggered successfully.")
+        else:
+            print("Failed to trigger database update. Status code:", response.status_code)
+
     def writeLog(self, init, msg):
 
         try:
@@ -177,7 +198,8 @@ class SONARRPRUNE():
 
         print(f"{serie.title}: {season.totalEpisodeCount} == {season.episodeCount}")
 
-        self.SonarrCommand.RefreshSeries()
+        # Call the function to trigger a database update
+        self.trigger_database_update(serie)
 
         if season.totalEpisodeCount == season.episodeCount:
 
@@ -356,10 +378,7 @@ class SONARRPRUNE():
 
         # Connect to Sonarr
         if self.sonarr_enabled:
-            self.sonarrNode = SonarrAPP(
-                self.sonarr_url, self.sonarr_token)
-
-            self.SonarrCommand = SonarrCMD(
+            self.sonarrNode = SonarrAPI(
                 self.sonarr_url, self.sonarr_token)
         else:
             logging.info(
