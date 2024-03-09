@@ -318,7 +318,7 @@ class SONARRPRUNE():
                             shutil.rmtree(f"{seriesdvPath}/{seasonDir}")
 
                         except FileNotFoundError:
-                            print("{seriesdvPath}/{seasonDir}")
+                            print(f"{seriesdvPath}/{seasonDir}")
                             logging.error("HEREHERE")
                             pass
 
