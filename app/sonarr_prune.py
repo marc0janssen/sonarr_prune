@@ -315,6 +315,8 @@ class SONARRPRUNE():
                                 "/content/video/seriesdv"
                                 )
 
+                            print(seriesdvPath)
+
                             shutil.rmtree(f"{seriesdvPath}/{seasonDir}")
 
                         except FileNotFoundError:
