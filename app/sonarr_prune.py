@@ -142,11 +142,13 @@ class SONARRPRUNE():
 
         response = requests.post(url, data, headers)
 
-        if response.status_code == 200:
+        if response.status_code == 204:
             logging.info(
                 "Database update triggered successfully for Emby.")
         else:
-            logging.error("Failed to trigger database update for Emby. Status code:", response.status_code)
+            logging.error(
+                f"Failed to trigger database update for Emby. Status code: "
+                f"{response.status_code}")
 
     # Trigger a database update in Sonarr
     def trigger_database_update(self):
@@ -165,9 +167,8 @@ class SONARRPRUNE():
                 "Database update triggered successfully for Sonarr (HD).")
         else:
             logging.error(
-                "Failed to trigger database update for Sonarr (HD). "
-                "Status code:",
-                response.status_code
+                f"Failed to trigger database update for Sonarr (HD). "
+                f"Status code: {response.status_code}"
                 )
 
         headers = {
@@ -183,9 +184,8 @@ class SONARRPRUNE():
                 "Database update triggered successfully for Sonarr (DV).")
         else:
             logging.error(
-                "Failed to trigger database update for Sonarr (DV). "
-                "Status code:",
-                response.status_code
+                f"Failed to trigger database update for Sonarr (DV). "
+                f"Status code: {response.status_code}"
                 )
 
     def writeLog(self, init, msg):
