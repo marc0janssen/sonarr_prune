@@ -9,9 +9,7 @@ import sys
 import shutil
 import smtplib
 import os
-
 import requests
-
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -50,18 +48,20 @@ class SONARRPRUNE():
                 self.config.read(self.config_filePath)
 
                 # SONARR
-                self.sonarr_enabled = True if (
-                    self.config['SONARR']['ENABLED'] == "ON") else False
-                self.sonarr_url = self.config['SONARR']['URL']
-                self.sonarr_token = self.config['SONARR']['TOKEN']
+                self.sonarrhd_enabled = True if (
+                    self.config['SONARRHD']['ENABLED'] == "ON") else False
+                self.sonarrhd_url = self.config['SONARRHD']['URL']
+                self.sonarrhd_token = self.config['SONARRHD']['TOKEN']
 
                 # SONARR2
-                self.sonarr2_enabled = True if (
-                    self.config['SONARR2']['ENABLED'] == "ON") else False
-                self.sonarr2_url = self.config['SONARR2']['URL']
-                self.sonarr2_token = self.config['SONARR2']['TOKEN']
+                self.sonarrdv_enabled = True if (
+                    self.config['SONARRDV']['ENABLED'] == "ON") else False
+                self.sonarrdv_url = self.config['SONARRDV']['URL']
+                self.sonarrdv_token = self.config['SONARRDV']['TOKEN']
 
                 # EMBY
+                self.emby_enabled = True if (
+                    self.config['EMBY']['ENABLED'] == "ON") else False
                 self.emby_url = self.config['EMBY']['URL']
                 self.emby_token = self.config['EMBY']['TOKEN']
 
@@ -151,42 +151,44 @@ class SONARRPRUNE():
                 f"{response.status_code}")
 
     # Trigger a database update in Sonarr
-    def trigger_database_update(self):
+    def trigger_database_update_sonarr(self):
         headers = {
-            'X-Api-Key': self.sonarr_token,
+            'X-Api-Key': self.sonarrhd_token,
             'Content-Type': 'application/json'
             }
         payload = {'name': 'refreshseries'}
         endpoint = "/api/v3/command"
 
-        response = requests.post(
-            self.sonarr_url + endpoint, json=payload, headers=headers)
+        if self.sonarrhd_enabled:
+            response = requests.post(
+                self.sonarrhd_url + endpoint, json=payload, headers=headers)
 
-        if response.status_code == 201:
-            logging.info(
-                "Database update triggered successfully for Sonarr (HD).")
-        else:
-            logging.error(
-                f"Failed to trigger database update for Sonarr (HD). "
-                f"Status code: {response.status_code}"
-                )
+            if response.status_code == 201:
+                logging.info(
+                    "Database update triggered successfully for Sonarr (HD).")
+            else:
+                logging.error(
+                    f"Failed to trigger database update for Sonarr (HD). "
+                    f"Status code: {response.status_code}"
+                    )
 
         headers = {
-            'X-Api-Key': self.sonarr2_token,
+            'X-Api-Key': self.sonarrdv_token,
             'Content-Type': 'application/json'
             }
 
-        response = requests.post(
-            self.sonarr2_url + endpoint, json=payload, headers=headers)
+        if self.sonarrdv_enabled:
+            response = requests.post(
+                self.sonarrdv_url + endpoint, json=payload, headers=headers)
 
-        if response.status_code == 201:
-            logging.info(
-                "Database update triggered successfully for Sonarr (DV).")
-        else:
-            logging.error(
-                f"Failed to trigger database update for Sonarr (DV). "
-                f"Status code: {response.status_code}"
-                )
+            if response.status_code == 201:
+                logging.info(
+                    "Database update triggered successfully for Sonarr (DV).")
+            else:
+                logging.error(
+                    f"Failed to trigger database update for Sonarr (DV). "
+                    f"Status code: {response.status_code}"
+                    )
 
     def writeLog(self, init, msg):
 
@@ -334,7 +336,7 @@ class SONARRPRUNE():
             ):
 
                 if not self.dry_run:
-                    if self.sonarr_enabled:
+                    if self.sonarrhd_enabled:
 
                         try:
                             # Delete Season
@@ -351,7 +353,7 @@ class SONARRPRUNE():
                                 f"season {season.seasonNumber}: {error}"
                                 )
 
-                        if self.sonarr2_enabled:
+                        if self.sonarrdv_enabled:
                             try:
                                 # Delete Season
                                 seriesdvPath = serie.path.replace(
@@ -418,23 +420,23 @@ class SONARRPRUNE():
             self.writeLog(False, "Prune - Library purge disabled.\n")
             sys.exit()
 
-        # Connect to Sonarr
-        if self.sonarr_enabled:
+        # Connect to Sonarr HD
+        if self.sonarrhd_enabled:
             self.sonarrNode = SonarrAPI(
-                self.sonarr_url, self.sonarr_token)
+                self.sonarrhd_url, self.sonarrhd_token)
         else:
             logging.info(
-                "Prune - Sonarr disabled in INI, exting.")
+                "Prune - Sonarr HD disabled in INI, exting.")
             self.writeLog(False, "Sonarr disabled in INI, exting.\n")
             sys.exit()
 
-        # Connect to Sonarr1
-        if self.sonarr2_enabled:
+        # Connect to Sonarr DV
+        if self.sonarrdv_enabled:
             self.sonarrNode1 = SonarrAPI(
-                self.sonarr2_url, self.sonarr2_token)
+                self.sonarrdv_url, self.sonarrdv_token)
         else:
             logging.info(
-                "Prune - Sonarr1 disabled in INI, exting.")
+                "Prune - Sonarr DV disabled in INI, exting.")
             self.writeLog(False, "Sonarr disabled in INI, exting.\n")
 
         if self.dry_run:
@@ -454,7 +456,7 @@ class SONARRPRUNE():
 
         # Get all Series from the server.
         media = None
-        if self.sonarr_enabled:
+        if self.sonarrhd_enabled:
             media = self.sonarrNode.all_series()
 
         if self.verbose_logging:
@@ -590,8 +592,12 @@ class SONARRPRUNE():
                     "SMTP error occurred: " + str(e))
 
         # Call the function to trigger a database update
-        self.trigger_database_update()
-        self.trigger_database_update_emby()
+
+        if self.sonarrhd_enabled or self.sonarrdv_enabled:
+            self.trigger_database_update_sonarr()
+
+        if self.emby_enabled:
+            self.trigger_database_update_emby()
 
 
 if __name__ == '__main__':

@@ -1,14 +1,15 @@
-[SONARR]
+[SONARRHD]
 ENABLED = ON
 URL = http://192.168.1.1:8989
 TOKEN = xxxxxx
 
-[SONARR2]
+[SONARRDV]
 ENABLED = ON
 URL = http://192.168.1.1:8989
 TOKEN = xxxxxx
 
 [EMBY]
+ENABLED = ON
 URL = http://192.168.1.2:8096
 TOKEN = yyyyyyyy
 
