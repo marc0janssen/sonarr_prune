@@ -196,7 +196,7 @@ class SONARRPRUNE():
 
         print(f"{serie.title}: {season.totalEpisodeCount} == {season.episodeCount}")
 
-        if season.totalEpisodeCount == season.episodeCount:
+        if season.totalEpisodeCount != season.episodeCount:
 
             if not os.path.isfile(
                     f"{serie.path}/{seasonDir}/{self.firstcomplete}"):
