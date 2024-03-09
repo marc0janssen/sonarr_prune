@@ -125,9 +125,9 @@ class SONARRPRUNE():
             sys.exit()
 
     # Trigger a database update in Sonarr
-    def trigger_database_update(self):
+    def trigger_database_update(self, series):
         headers = {"X-Api-Key": self.sonarr_token}
-        payload = {"name": "RescanSeries"}
+        payload = {"name": "RescanSeries", "seriesId": series.id}
 
         response = requests.post(
             self.sonarr_url, headers=headers, json=payload)
@@ -191,6 +191,9 @@ class SONARRPRUNE():
             else f"Season {season.seasonNumber}"
 
         print(f"{serie.title}: {season.totalEpisodeCount} == {season.episodeCount}")
+
+        # Call the function to trigger a database update
+        self.trigger_database_update(serie)
 
         if season.totalEpisodeCount == season.episodeCount:
 
@@ -528,9 +531,6 @@ class SONARRPRUNE():
             except smtplib.SMTPException as e:
                 logging.error(
                     "SMTP error occurred: " + str(e))
-
-        # Call the function to trigger a database update
-        self.trigger_database_update()
 
 
 if __name__ == '__main__':
