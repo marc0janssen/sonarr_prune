@@ -56,10 +56,10 @@ class SONARRPRUNE():
                 self.sonarr_token = self.config['SONARR']['TOKEN']
 
                 # SONARR
-                self.sonarr1_enabled = True if (
-                    self.config['SONARR1']['ENABLED'] == "ON") else False
-                self.sonarr1_url = self.config['SONARR1']['URL']
-                self.sonarr1_token = self.config['SONARR1']['TOKEN']
+                self.sonarr2_enabled = True if (
+                    self.config['SONARR2']['ENABLED'] == "ON") else False
+                self.sonarr2_url = self.config['SONARR2']['URL']
+                self.sonarr2_token = self.config['SONARR2']['TOKEN']
 
                 # PRUNE
                 # list(map(int, "list")) converts a list of string to
@@ -153,12 +153,12 @@ class SONARRPRUNE():
                 )
 
         headers = {
-            'X-Api-Key': self.sonarr1_token,
+            'X-Api-Key': self.sonarr2_token,
             'Content-Type': 'application/json'
             }
 
         response = requests.post(
-            self.sonarr1_url + endpoint, json=payload, headers=headers)
+            self.sonarr2_url + endpoint, json=payload, headers=headers)
 
         if response.status_code == 201:
             logging.info(
@@ -333,7 +333,7 @@ class SONARRPRUNE():
                                 f"season {season.seasonNumber}: {error}"
                                 )
 
-                        if self.sonarr1_enabled:
+                        if self.sonarr2_enabled:
                             try:
                                 # Delete Season
                                 seriesdvPath = serie.path.replace(
@@ -411,9 +411,9 @@ class SONARRPRUNE():
             sys.exit()
 
         # Connect to Sonarr1
-        if self.sonarr1_enabled:
+        if self.sonarr2_enabled:
             self.sonarrNode1 = SonarrAPI(
-                self.sonarr1_url, self.sonarr1_token)
+                self.sonarr2_url, self.sonarr2_token)
         else:
             logging.info(
                 "Prune - Sonarr1 disabled in INI, exting.")
