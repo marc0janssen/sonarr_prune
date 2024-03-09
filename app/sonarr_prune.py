@@ -142,14 +142,13 @@ class SONARRPRUNE():
 
         response = requests.post(url, data, headers)
 
-        if response.status_code == 204:
+        if response.status_code == 200:
             logging.info(
                 "Database update triggered successfully for Emby.")
         else:
             logging.error(
                 "Failed to trigger database update for Emby. "
-                "Status code:",
-                response.status_code
+                "Status code:", response.status_code
                 )
 
     # Trigger a database update in Sonarr
