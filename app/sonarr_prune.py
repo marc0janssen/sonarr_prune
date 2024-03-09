@@ -136,7 +136,7 @@ class SONARRPRUNE():
         print(series.id)
 
         response = requests.post(
-            self.sonarr_url + endpoint, json=payload, headers=headers)
+            self.sonarr_url + endpoint, headers=headers, json=payload)
 
         if response.status_code == 200:
             print("Database update triggered successfully.")
