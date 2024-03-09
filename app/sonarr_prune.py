@@ -140,17 +140,7 @@ class SONARRPRUNE():
         data = {}
         url = f"{self.emby_url}/Emby/Library/Refresh?api_key={self.emby_token}"
 
-        response = requests.post(url, data, headers)
-
-        if response.status_code == 200:
-            logging.info(
-                "Database update triggered successfully for Emby.")
-        else:
-            logging.error(
-                "Failed to trigger database update for Emby. "
-                "Status code:",
-                response.status_code
-                )
+        _ = requests.post(url, data, headers)
 
     # Trigger a database update in Sonarr
     def trigger_database_update(self):
