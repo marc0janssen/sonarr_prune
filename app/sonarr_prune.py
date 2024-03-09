@@ -177,7 +177,7 @@ class SONARRPRUNE():
 
         print(f"{serie.title}: {season.totalEpisodeCount} == {season.episodeCount}")
 
-        self.SonarrCommand.RefreshSeries
+        self.SonarrCommand.RefreshSeries()
 
         if season.totalEpisodeCount == season.episodeCount:
 
