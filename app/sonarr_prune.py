@@ -174,6 +174,8 @@ class SONARRPRUNE():
         seasonDir = "Specials" if season.seasonNumber == 0 \
             else f"Season {season.seasonNumber}"
 
+        print(f"{season.totalEpisodeCount} == {season.episodeCount}")
+
         if season.totalEpisodeCount == season.episodeCount:
 
             if not os.path.isfile(
@@ -292,6 +294,7 @@ class SONARRPRUNE():
                             shutil.rmtree(f"{seriesdvPath}/{seasonDir}")
 
                         except FileNotFoundError:
+                            logging.error("HEREHERE")
                             pass
 
                         except OSError as error:
