@@ -192,9 +192,6 @@ class SONARRPRUNE():
 
         print(f"{serie.title}: {season.totalEpisodeCount} == {season.episodeCount}")
 
-        # Call the function to trigger a database update
-        self.trigger_database_update()
-
         if season.totalEpisodeCount == season.episodeCount:
 
             if not os.path.isfile(
@@ -531,6 +528,9 @@ class SONARRPRUNE():
             except smtplib.SMTPException as e:
                 logging.error(
                     "SMTP error occurred: " + str(e))
+
+        # Call the function to trigger a database update
+        self.trigger_database_update()
 
 
 if __name__ == '__main__':
