@@ -30,7 +30,7 @@ class SONARRPRUNE():
 
         config_dir = "/config/"
         app_dir = "/app/"
-        log_dir = "/logging/"
+        log_dir = "/logging/prune/"
 
         self.config_file = "sonarr_prune.ini"
         self.exampleconfigfile = "sonarr_prune.ini.example"
