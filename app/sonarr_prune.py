@@ -372,22 +372,21 @@ class SONARRPRUNE():
                                     f"season {season.seasonNumber}: {error}"
                                     )
 
+                txtTitle = (
+                    f"{serie.title} ({serie.year}) Season "
+                    f"{str(season.seasonNumber).zfill(2)}"
+                )
+
                 if self.pushover_enabled:
                     self.message = self.userPushover.send_message(
-                        message=f"{serie.title} "
-                        f"Season {str(season.seasonNumber).zfill(2)} "
-                        f"({serie.year})"
-                        f"Prune - REMOVED - {serie.title} "
-                        f"Season {str(season.seasonNumber).zfill(2)} "
-                        f"({serie.year})"
+                        message=f"{txtTitle}"
+                        f"Prune - REMOVED - {txtTitle} "
                         f" - {seasonDownloadDate}",
                         sound=self.pushover_sound
                     )
 
                 txtRemoved = (
-                    f"Prune - REMOVED - {serie.title} "
-                    f"Season {str(season.seasonNumber).zfill(2)} "
-                    f"({serie.year})"
+                    f"Prune - REMOVED - {txtTitle} "
                     f" - {seasonDownloadDate}"
                 )
 
