@@ -379,8 +379,7 @@ class SONARRPRUNE():
 
                 if self.pushover_enabled:
                     self.message = self.userPushover.send_message(
-                        message=f"{txtTitle}"
-                        f"Prune - REMOVED - {txtTitle} "
+                        message=f"Prune - REMOVED - {txtTitle} "
                         f" - {seasonDownloadDate}",
                         sound=self.pushover_sound
                     )
