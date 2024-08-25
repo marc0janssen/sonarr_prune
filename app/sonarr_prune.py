@@ -245,7 +245,7 @@ class SONARRPRUNE():
 
         if os.path.exists(f"{serie.path}/{seasonDir}"):
 
-            print(f"{season.percentOfEpisodes} == {season.episodeCount} == {season.episodeFileCount}")
+            print(f"{season.percentOfEpisodes} == {season.episodeCount} == {season.episodeFileCount} == {serie.title}")
 
             if season.percentOfEpisodes == 100.0:
 
