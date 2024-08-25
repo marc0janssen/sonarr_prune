@@ -251,7 +251,8 @@ class SONARRPRUNE():
                         f"{serie.path}/{seasonDir}/{self.firstcomplete}"):
 
                     with open(
-                        f"{serie.path}/{seasonDir}/{self.firstcomplete}", 'w') \
+                        f"{serie.path}/{seasonDir}/{self.firstcomplete}",
+                            'w') \
                             as firstcomplete_file:
                         firstcomplete_file.close()
 
@@ -363,7 +364,8 @@ class SONARRPRUNE():
                                         "/content/video/seriesdv"
                                         )
 
-                                    shutil.rmtree(f"{seriesdvPath}/{seasonDir}")
+                                    shutil.rmtree(
+                                        f"{seriesdvPath}/{seasonDir}")
 
                                 except FileNotFoundError:
                                     pass
@@ -371,7 +373,8 @@ class SONARRPRUNE():
                                 except OSError as error:
                                     logging.error(
                                         f"Error removing DV {serie.title} "
-                                        f"season {season.seasonNumber}: {error}"
+                                        f"season {season.seasonNumber}: "
+                                        f"{error}"
                                         )
 
                     txtTitle = (
