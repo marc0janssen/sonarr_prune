@@ -247,7 +247,7 @@ class SONARRPRUNE():
 
         if season.totalEpisodeCount == season.episodeCount:
 
-            if not os.path.isfile(
+            if os.path.exists(f"{serie.path}/{seasonDir}") and not os.path.isfile(
                     f"{serie.path}/{seasonDir}/{self.firstcomplete}"):
 
                 with open(
