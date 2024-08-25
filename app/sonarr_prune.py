@@ -243,9 +243,10 @@ class SONARRPRUNE():
         seasonDir = "Specials" if season.seasonNumber == 0 \
             else f"Season {season.seasonNumber}"
         
-        print(f"{season.totalEpisodeCount} == {season.episodeCount}")
+        print(f"{season.percentOfEpisodes}")
 
         if os.path.exists(f"{serie.path}/{seasonDir}"):
+
             if season.totalEpisodeCount == season.episodeCount:
 
                 if not os.path.isfile(
