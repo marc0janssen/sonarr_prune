@@ -245,171 +245,172 @@ class SONARRPRUNE():
         
         print(f"{season.totalEpisodeCount} == {season.episodeCount}")
 
-        if season.totalEpisodeCount == season.episodeCount:
+        if os.path.exists(f"{serie.path}/{seasonDir}"):
+            if season.totalEpisodeCount == season.episodeCount:
 
-            if os.path.exists(f"{serie.path}/{seasonDir}") and not os.path.isfile(
-                    f"{serie.path}/{seasonDir}/{self.firstcomplete}"):
+                if not os.path.isfile(
+                        f"{serie.path}/{seasonDir}/{self.firstcomplete}"):
 
-                with open(
-                    f"{serie.path}/{seasonDir}/{self.firstcomplete}", 'w') \
-                        as firstcomplete_file:
-                    firstcomplete_file.close()
+                    with open(
+                        f"{serie.path}/{seasonDir}/{self.firstcomplete}", 'w') \
+                            as firstcomplete_file:
+                        firstcomplete_file.close()
 
-                    if not self.only_show_remove_messages:
-                        txtFirstSeen = (
-                            f"Prune - COMPLETE - "
-                            f"{serie.title} S"
-                            f"{str(season.seasonNumber)} "
-                            f"({serie.year})"
-                        )
+                        if not self.only_show_remove_messages:
+                            txtFirstSeen = (
+                                f"Prune - COMPLETE - "
+                                f"{serie.title} S"
+                                f"{str(season.seasonNumber)} "
+                                f"({serie.year})"
+                            )
 
-                        self.writeLog(False, f"{txtFirstSeen}\n")
-                        logging.info(txtFirstSeen)
+                            self.writeLog(False, f"{txtFirstSeen}\n")
+                            logging.info(txtFirstSeen)
 
-            modifieddate = os.stat(
-                f"{serie.path}/{seasonDir}/"
-                f"{self.firstcomplete}").st_mtime
+                modifieddate = os.stat(
+                    f"{serie.path}/{seasonDir}/"
+                    f"{self.firstcomplete}").st_mtime
 
-            seasonDownloadDate = \
-                datetime.fromtimestamp(modifieddate)
+                seasonDownloadDate = \
+                    datetime.fromtimestamp(modifieddate)
 
-        now = datetime.now()
+            now = datetime.now()
 
-        if seasonDownloadDate:
+            if seasonDownloadDate:
 
-            # check if there needs to be warn "DAYS" infront of removal
-            # 1. Are we still within the period before removel?
-            # 2. Is "NOW" less than "warning days" before removal?
-            # 3. is "NOW" more then "warning days - 1" before removal
-            #               (warn only 1 day)
-            if (
-                timedelta(
-                    days=self.remove_after_days) >
-                now - seasonDownloadDate and
-                seasonDownloadDate +
-                timedelta(
-                    days=self.remove_after_days) -
-                now <= timedelta(days=self.warn_days_infront) and
-                seasonDownloadDate +
-                timedelta(
-                    days=self.remove_after_days) -
-                now > timedelta(days=self.warn_days_infront) -
-                timedelta(days=1)
-            ):
-                self.timeLeft = (
+                # check if there needs to be warn "DAYS" infront of removal
+                # 1. Are we still within the period before removel?
+                # 2. Is "NOW" less than "warning days" before removal?
+                # 3. is "NOW" more then "warning days - 1" before removal
+                #               (warn only 1 day)
+                if (
+                    timedelta(
+                        days=self.remove_after_days) >
+                    now - seasonDownloadDate and
                     seasonDownloadDate +
                     timedelta(
-                        days=self.remove_after_days) - now)
-
-                txtTimeLeft = \
-                    'h'.join(str(self.timeLeft).split(':')[:2])
-
-                if self.pushover_enabled:
-                    self.message = self.userPushover.send_message(
-                        message=f"Prune - {serie.title} "
-                        f"Season {str(season.seasonNumber).zfill(2)}"
-                        f" ({serie.year}) "
-                        f"will be removed from server in "
-                        f"{txtTimeLeft}",
-                        sound=self.pushover_sound
-                    )
-
-                txtWillBeRemoved = (
-                    f"Prune - WILL BE REMOVED - "
-                    f"{serie.title} "
-                    f"Season {str(season.seasonNumber).zfill(2)}"
-                    f" ({serie.year})"
-                    f" in {txtTimeLeft}"
-                    f" - {seasonDownloadDate}"
-                )
-
-                self.writeLog(False, f"{txtWillBeRemoved}\n")
-                logging.info(txtWillBeRemoved)
-
-                isRemoved, isPlanned = False, True
-
-                return isRemoved, isPlanned
-
-            # Check is season is older than "days set in INI"
-            if (
-                now - seasonDownloadDate >=
+                        days=self.remove_after_days) -
+                    now <= timedelta(days=self.warn_days_infront) and
+                    seasonDownloadDate +
                     timedelta(
-                        days=self.remove_after_days)
-            ):
+                        days=self.remove_after_days) -
+                    now > timedelta(days=self.warn_days_infront) -
+                    timedelta(days=1)
+                ):
+                    self.timeLeft = (
+                        seasonDownloadDate +
+                        timedelta(
+                            days=self.remove_after_days) - now)
 
-                if not self.dry_run:
-                    if self.sonarrhd_enabled:
+                    txtTimeLeft = \
+                        'h'.join(str(self.timeLeft).split(':')[:2])
 
-                        try:
-                            # Delete Season
-                            shutil.rmtree(f"{serie.path}/{seasonDir}")
+                    if self.pushover_enabled:
+                        self.message = self.userPushover.send_message(
+                            message=f"Prune - {serie.title} "
+                            f"Season {str(season.seasonNumber).zfill(2)}"
+                            f" ({serie.year}) "
+                            f"will be removed from server in "
+                            f"{txtTimeLeft}",
+                            sound=self.pushover_sound
+                        )
 
-                        except FileNotFoundError:
-                            logging.error(
-                                f"Season Not Found {serie.title} "
-                                f"season {season.seasonNumber}"
-                                )
-                        except OSError as error:
-                            logging.error(
-                                f"Error removing {serie.title} "
-                                f"season {season.seasonNumber}: {error}"
-                                )
-
-                        if self.sonarrdv_enabled:
-                            try:
-                                # Delete Season
-                                seriesdvPath = serie.path.replace(
-                                    "/content/video/series",
-                                    "/content/video/seriesdv"
-                                    )
-
-                                shutil.rmtree(f"{seriesdvPath}/{seasonDir}")
-
-                            except FileNotFoundError:
-                                pass
-
-                            except OSError as error:
-                                logging.error(
-                                    f"Error removing DV {serie.title} "
-                                    f"season {season.seasonNumber}: {error}"
-                                    )
-
-                txtTitle = (
-                    f"{serie.title} ({serie.year}) Season "
-                    f"{str(season.seasonNumber).zfill(2)}"
-                )
-
-                if self.pushover_enabled:
-                    self.message = self.userPushover.send_message(
-                        message=f"Prune - REMOVED - {txtTitle} "
-                        f" - {seasonDownloadDate}",
-                        sound=self.pushover_sound
-                    )
-
-                txtRemoved = (
-                    f"Prune - REMOVED - {txtTitle} "
-                    f" - {seasonDownloadDate}"
-                )
-
-                self.writeLog(False, f"{txtRemoved}\n")
-                logging.info(txtRemoved)
-
-                isRemoved, isPlanned = True, False
-
-            else:
-                if not self.only_show_remove_messages:
-                    txtActive = (
-                        f"Prune - ACTIVE - "
+                    txtWillBeRemoved = (
+                        f"Prune - WILL BE REMOVED - "
                         f"{serie.title} "
-                        f"Season {str(season.seasonNumber).zfill(2)} "
-                        f"({serie.year})"
+                        f"Season {str(season.seasonNumber).zfill(2)}"
+                        f" ({serie.year})"
+                        f" in {txtTimeLeft}"
                         f" - {seasonDownloadDate}"
                     )
 
-                    self.writeLog(False, f"{txtActive}\n")
-                    logging.info(txtActive)
+                    self.writeLog(False, f"{txtWillBeRemoved}\n")
+                    logging.info(txtWillBeRemoved)
 
-                isRemoved, isPlanned = False, False
+                    isRemoved, isPlanned = False, True
+
+                    return isRemoved, isPlanned
+
+                # Check is season is older than "days set in INI"
+                if (
+                    now - seasonDownloadDate >=
+                        timedelta(
+                            days=self.remove_after_days)
+                ):
+
+                    if not self.dry_run:
+                        if self.sonarrhd_enabled:
+
+                            try:
+                                # Delete Season
+                                shutil.rmtree(f"{serie.path}/{seasonDir}")
+
+                            except FileNotFoundError:
+                                logging.error(
+                                    f"Season Not Found {serie.title} "
+                                    f"season {season.seasonNumber}"
+                                    )
+                            except OSError as error:
+                                logging.error(
+                                    f"Error removing {serie.title} "
+                                    f"season {season.seasonNumber}: {error}"
+                                    )
+
+                            if self.sonarrdv_enabled:
+                                try:
+                                    # Delete Season
+                                    seriesdvPath = serie.path.replace(
+                                        "/content/video/series",
+                                        "/content/video/seriesdv"
+                                        )
+
+                                    shutil.rmtree(f"{seriesdvPath}/{seasonDir}")
+
+                                except FileNotFoundError:
+                                    pass
+
+                                except OSError as error:
+                                    logging.error(
+                                        f"Error removing DV {serie.title} "
+                                        f"season {season.seasonNumber}: {error}"
+                                        )
+
+                    txtTitle = (
+                        f"{serie.title} ({serie.year}) Season "
+                        f"{str(season.seasonNumber).zfill(2)}"
+                    )
+
+                    if self.pushover_enabled:
+                        self.message = self.userPushover.send_message(
+                            message=f"Prune - REMOVED - {txtTitle} "
+                            f" - {seasonDownloadDate}",
+                            sound=self.pushover_sound
+                        )
+
+                    txtRemoved = (
+                        f"Prune - REMOVED - {txtTitle} "
+                        f" - {seasonDownloadDate}"
+                    )
+
+                    self.writeLog(False, f"{txtRemoved}\n")
+                    logging.info(txtRemoved)
+
+                    isRemoved, isPlanned = True, False
+
+                else:
+                    if not self.only_show_remove_messages:
+                        txtActive = (
+                            f"Prune - ACTIVE - "
+                            f"{serie.title} "
+                            f"Season {str(season.seasonNumber).zfill(2)} "
+                            f"({serie.year})"
+                            f" - {seasonDownloadDate}"
+                        )
+
+                        self.writeLog(False, f"{txtActive}\n")
+                        logging.info(txtActive)
+
+                    isRemoved, isPlanned = False, False
 
         return isRemoved, isPlanned
 
