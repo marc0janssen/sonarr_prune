@@ -247,7 +247,7 @@ class SONARRPRUNE():
 
         if os.path.exists(f"{serie.path}/{seasonDir}"):
 
-            if season.percentOfEpisodes == 100.0:
+            if season.totalEpisodeCount == season.episodeFileCount:
 
                 if not os.path.isfile(
                         f"{serie.path}/{seasonDir}/{self.firstcomplete}"):
