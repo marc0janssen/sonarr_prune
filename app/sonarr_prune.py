@@ -139,7 +139,7 @@ class SONARRPRUNE():
 
     def isDiskFull(self):
         # Get the Rootfolers and diskage
-        if self.sonarr_enabled:
+        if self.sonarrhd_enabled:
             folders = self.sonarrNode.root_folder()
             root_Folder = folders[0]
             diskInfo = psutil.disk_usage(root_Folder.path)
