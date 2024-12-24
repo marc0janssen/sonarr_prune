@@ -463,7 +463,7 @@ class SONARRPRUNE():
             folders = self.sonarrNode.root_folder()
             root_Folder = folders[0]
             diskInfo = psutil.disk_usage(root_Folder.path)
-            logging.info(f"Percentage diskspace: {diskInfo.percent}%")
+            logging.info(f"Percentage diskspace sonarr: {diskInfo.percent}%")
             diskFull = True \
                 if diskInfo.percent >= self.remove_percentage else False
 
