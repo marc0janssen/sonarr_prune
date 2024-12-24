@@ -137,6 +137,16 @@ class SONARRPRUNE():
                             f'{config_dir}{self.exampleconfigfile}')
             sys.exit()
 
+    def isDiskFull(self):
+        # Get the Rootfolers and diskage
+        if self.sonarr_enabled:
+            folders = self.radarrNode.root_folder()
+            root_Folder = folders[0]
+            diskInfo = psutil.disk_usage(root_Folder.path)
+            return True, diskInfo.percent \
+                if diskInfo.percent >= self.remove_percentage \
+                else False, diskInfo.percent
+
     def trigger_database_update_emby(self):
 
         headers = {}
@@ -286,6 +296,9 @@ class SONARRPRUNE():
                 # 2. Is "NOW" less than "warning days" before removal?
                 # 3. is "NOW" more then "warning days - 1" before removal
                 #               (warn only 1 day)
+
+                isFull, percentage = self.isDiskFull()
+
                 if (
                     timedelta(
                         days=self.remove_after_days) >
@@ -330,15 +343,21 @@ class SONARRPRUNE():
                     self.writeLog(False, f"{txtWillBeRemoved}\n")
                     logging.info(txtWillBeRemoved)
 
+                    self.writeLog(False,
+                                  f"Percentage diskspace sonarr: "
+                                  f"{percentage}%")
+                    logging.info(f"Percentage diskspace sonarr: {percentage}%")
+
                     isRemoved, isPlanned = False, True
 
                     return isRemoved, isPlanned
 
                 # Check is season is older than "days set in INI"
+
                 if (
                     now - seasonDownloadDate >=
                         timedelta(
-                            days=self.remove_after_days)
+                            days=self.remove_after_days) and isFull
                 ):
 
                     if not self.dry_run:
@@ -400,6 +419,11 @@ class SONARRPRUNE():
                     self.writeLog(False, f"{txtRemoved}\n")
                     logging.info(txtRemoved)
 
+                    self.writeLog(False,
+                                  f"Percentage diskspace sonarr: "
+                                  f"{percentage}%")
+                    logging.info(f"Percentage diskspace sonarr: {percentage}%")
+
                     isRemoved, isPlanned = True, False
 
                 else:
@@ -460,15 +484,6 @@ class SONARRPRUNE():
             self.userPushover = \
                 self.appPushover.get_user(self.pushover_user_key)
 
-        # Get the Rootfolers and diskage
-        if self.sonarrhd_enabled:
-            folders = self.sonarrNode.root_folder()
-            root_Folder = folders[0]
-            diskInfo = psutil.disk_usage(root_Folder.path)
-            logging.info(f"Percentage diskspace sonarr: {diskInfo.percent}%")
-            diskFull = True \
-                if diskInfo.percent >= self.remove_percentage else False
-
         # Get all Series from the server.
         media = None
         if self.sonarrhd_enabled:
@@ -482,7 +497,8 @@ class SONARRPRUNE():
         numDeleted = 0
         numNotifified = 0
         isRemoved, isPlanned = False, False
-        if media and diskFull:
+        isFull, percentage = self.isDiskFull()
+        if media and isFull:
             media.sort(key=self.sortOnTitle)  # Sort the list on Title
             for serie in media:
 
@@ -535,7 +551,9 @@ class SONARRPRUNE():
 
         if self.verbose_logging:
             logging.info(txtEnd)
+            logging.info(f"Percentage diskspace radarr: {percentage}%")
         self.writeLog(False, f"{txtEnd}\n")
+        self.writelog(False, f"Percentage diskspace radarr: {percentage}%\n")
 
         if self.mail_enabled and \
             (not self.only_mail_when_removed or
