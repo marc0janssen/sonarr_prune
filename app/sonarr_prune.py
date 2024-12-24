@@ -10,6 +10,7 @@ import shutil
 import smtplib
 import os
 import requests
+import psutil
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -457,6 +458,15 @@ class SONARRPRUNE():
             self.userPushover = \
                 self.appPushover.get_user(self.pushover_user_key)
 
+        # Get the Rootfolers and diskage
+        if self.sonarrhd_enabled:
+            folders = self.sonarrNode.root_folder()
+            root_Folder = folders[0]
+            diskInfo = psutil.disk_usage(root_Folder.path)
+            logging.info(f"Percentage diskspace: {diskInfo.percent}%")
+            diskFull = True \
+                if diskInfo.percent >= self.remove_percentage else False
+
         # Get all Series from the server.
         media = None
         if self.sonarrhd_enabled:
@@ -470,7 +480,7 @@ class SONARRPRUNE():
         numDeleted = 0
         numNotifified = 0
         isRemoved, isPlanned = False, False
-        if media:
+        if media and diskFull:
             media.sort(key=self.sortOnTitle)  # Sort the list on Title
             for serie in media:
 
