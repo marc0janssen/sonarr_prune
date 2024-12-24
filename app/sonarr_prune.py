@@ -71,6 +71,8 @@ class SONARRPRUNE():
                 # a list of ints
                 self.remove_after_days = int(
                     self.config['PRUNE']['REMOVE_SERIES_AFTER_DAYS'])
+                self.remove_percentage = float(
+                    self.config['PRUNE']['REMOVE_MOVIES_DISK_PERCENTAGE'])
                 self.warn_days_infront = int(
                     self.config['PRUNE']['WARN_DAYS_INFRONT'])
                 self.dry_run = True if (
