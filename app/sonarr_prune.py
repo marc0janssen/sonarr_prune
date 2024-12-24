@@ -140,12 +140,13 @@ class SONARRPRUNE():
     def isDiskFull(self):
         # Get the Rootfolers and diskage
         if self.sonarr_enabled:
-            folders = self.radarrNode.root_folder()
+            folders = self.sonarrNode.root_folder()
             root_Folder = folders[0]
             diskInfo = psutil.disk_usage(root_Folder.path)
-            return True, diskInfo.percent \
+            isFull = True \
                 if diskInfo.percent >= self.remove_percentage \
-                else False, diskInfo.percent
+                else False
+            return (isFull, diskInfo.percent)
 
     def trigger_database_update_emby(self):
 
@@ -220,24 +221,19 @@ class SONARRPRUNE():
     def sortOnTitle(self, e):
         return e.sortTitle
 
-    def getTagLabeltoID(self, typeOfMedia):
+    def getTagLabeltoID(self):
         # Put all tags in a dictonairy with pair label <=> ID
 
         TagLabeltoID = {}
-        if typeOfMedia == "serie":
-            for tag in self.sonarrNode.all_tags():
-                # Add tag to lookup by it's name
-                TagLabeltoID[tag.label] = tag.id
-        else:
-            for tag in self.radarrNode.all_tags():
-                # Add tag to lookup by it's name
-                TagLabeltoID[tag.label] = tag.id
+        for tag in self.sonarrNode.all_tags():
+            # Add tag to lookup by it's name
+            TagLabeltoID[tag.label] = tag.id
 
         return TagLabeltoID
 
-    def getIDsforTagLabels(self, typeOfmedia, tagLabels):
+    def getIDsforTagLabels(self, tagLabels):
 
-        TagLabeltoID = self.getTagLabeltoID(typeOfmedia)
+        TagLabeltoID = self.getTagLabeltoID()
 
         # Get ID's for extending media
         tagsIDs = []
@@ -505,7 +501,7 @@ class SONARRPRUNE():
                 # Get ID's for keeping series anyway
                 tagLabels_to_keep = self.tags_to_keep
                 tagsIDs_to_keep = self.getIDsforTagLabels(
-                    "serie", tagLabels_to_keep)
+                    tagLabels_to_keep)
 
                 # check if ONE of the "KEEP" tags is
                 # in the set of "MOVIE TAGS"
@@ -551,9 +547,9 @@ class SONARRPRUNE():
 
         if self.verbose_logging:
             logging.info(txtEnd)
-            logging.info(f"Percentage diskspace radarr: {percentage}%")
+            logging.info(f"Percentage diskspace sonarr: {percentage}%")
         self.writeLog(False, f"{txtEnd}\n")
-        self.writelog(False, f"Percentage diskspace radarr: {percentage}%\n")
+        self.writeLog(False, f"Percentage diskspace sonarr: {percentage}%\n")
 
         if self.mail_enabled and \
             (not self.only_mail_when_removed or
