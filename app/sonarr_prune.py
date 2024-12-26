@@ -493,7 +493,11 @@ class SONARRPRUNE():
         numDeleted = 0
         numNotifified = 0
         isRemoved, isPlanned = False, False
+
         isFull, percentage = self.isDiskFull()
+
+        logging.info(f"Percentage diskspace sonarr: {percentage}%")
+
         if media and isFull:
             media.sort(key=self.sortOnTitle)  # Sort the list on Title
             for serie in media:
