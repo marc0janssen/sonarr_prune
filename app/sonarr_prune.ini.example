@@ -8,7 +8,12 @@ ENABLED = ON
 URL = http://192.168.1.1:8989
 TOKEN = xxxxxx
 
-[EMBY]
+[EMBY1]
+ENABLED = ON
+URL = http://192.168.1.2:8096
+TOKEN = yyyyyyyy
+
+[EMBY2]
 ENABLED = ON
 URL = http://192.168.1.2:8096
 TOKEN = yyyyyyyy

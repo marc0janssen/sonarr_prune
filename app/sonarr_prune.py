@@ -60,11 +60,17 @@ class SONARRPRUNE():
                 self.sonarrdv_url = self.config['SONARRDV']['URL']
                 self.sonarrdv_token = self.config['SONARRDV']['TOKEN']
 
-                # EMBY
-                self.emby_enabled = True if (
-                    self.config['EMBY']['ENABLED'] == "ON") else False
-                self.emby_url = self.config['EMBY']['URL']
-                self.emby_token = self.config['EMBY']['TOKEN']
+                # EMBY1
+                self.emby_enabled1 = True if (
+                    self.config['EMBY1']['ENABLED'] == "ON") else False
+                self.emby_url1 = self.config['EMBY1']['URL']
+                self.emby_token1 = self.config['EMBY1']['TOKEN']
+
+                # EMBY2
+                self.emby_enabled2 = True if (
+                    self.config['EMBY2']['ENABLED'] == "ON") else False
+                self.emby_url2 = self.config['EMBY2']['URL']
+                self.emby_token2 = self.config['EMBY2']['TOKEN']
 
                 # PRUNE
                 # list(map(int, "list")) converts a list of string to
@@ -148,20 +154,38 @@ class SONARRPRUNE():
                 else False
             return (isFull, diskInfo.percent)
 
-    def trigger_database_update_emby(self):
+    def trigger_database_update_emby1(self):
 
         headers = {}
         data = {}
-        url = f"{self.emby_url}/Emby/Library/Refresh?api_key={self.emby_token}"
 
+        url = \
+            f"{self.emby_url1}/Emby/Library/Refresh?api_key={self.emby_token1}"
         response = requests.post(url, data, headers)
 
         if response.status_code == 204:
             logging.info(
-                "Database update triggered successfully for Emby.")
+                "Database update triggered successfully for Emby1.")
         else:
             logging.error(
-                f"Failed to trigger database update for Emby. Status code: "
+                f"Failed to trigger database update for Emby1. Status code: "
+                f"{response.status_code}")
+
+    def trigger_database_update_emby2(self):
+
+        headers = {}
+        data = {}
+
+        url = \
+            f"{self.emby_url2}/Emby/Library/Refresh?api_key={self.emby_token2}"
+        response = requests.post(url, data, headers)
+
+        if response.status_code == 204:
+            logging.info(
+                "Database update triggered successfully for Emby2.")
+        else:
+            logging.error(
+                f"Failed to trigger database update for Emby2. Status code: "
                 f"{response.status_code}")
 
     # Trigger a database update in Sonarr
@@ -629,8 +653,11 @@ class SONARRPRUNE():
         if self.sonarrhd_enabled or self.sonarrdv_enabled:
             self.trigger_database_update_sonarr()
 
-        if self.emby_enabled:
-            self.trigger_database_update_emby()
+        if self.emby_enabled1:
+            self.trigger_database_update_emby1()
+
+        if self.emby_enabled2:
+            self.trigger_database_update_emby2()
 
 
 if __name__ == '__main__':
