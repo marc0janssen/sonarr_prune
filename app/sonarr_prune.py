@@ -564,7 +564,7 @@ class SONARRPRUNE():
                     numDeleted += subNumDeleted
                     numNotifified += subNnumNotifified
 
-                time.sleep(0.5)
+                time.sleep(0.2)
 
         txtEnd = (
             f"Prune - There were {numDeleted} seaons removed."
