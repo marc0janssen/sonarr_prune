@@ -11,6 +11,7 @@ import smtplib
 import os
 import requests
 import psutil
+import time
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -562,6 +563,8 @@ class SONARRPRUNE():
 
                     numDeleted += subNumDeleted
                     numNotifified += subNnumNotifified
+                
+                time.sleep(0.5)
 
         txtEnd = (
             f"Prune - There were {numDeleted} seaons removed."
