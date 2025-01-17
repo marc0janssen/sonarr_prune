@@ -563,7 +563,7 @@ class SONARRPRUNE():
 
                     numDeleted += subNumDeleted
                     numNotifified += subNnumNotifified
-                
+
                 time.sleep(0.5)
 
         txtEnd = (
