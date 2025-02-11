@@ -18,7 +18,7 @@ from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 from datetime import datetime, timedelta
-from arrapi import SonarrAPI
+from arrapi import SonarrAPI, exceptions
 from chump import Application
 from socket import gaierror
 
@@ -473,8 +473,18 @@ class SONARRPRUNE():
 
         # Connect to Sonarr HD
         if self.sonarrhd_enabled:
-            self.sonarrNode = SonarrAPI(
-                self.sonarrhd_url, self.sonarrhd_token)
+            try:
+                self.sonarrNode = SonarrAPI(
+                    self.sonarrhd_url, self.sonarrhd_token)
+            except exceptions.ArrException as e:
+                logging.error(
+                    f"Can't connect to Sonarr source {e}"
+                )
+                sys.exit()
+            except Exception as e:
+                logging.error(
+                    f"Unexpected error connecting Sonarr source: {e}")
+                sys.exit(1)
         else:
             logging.info(
                 "Prune - Sonarr HD disabled in INI, exting.")
