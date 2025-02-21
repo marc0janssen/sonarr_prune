@@ -50,10 +50,10 @@ class SONARRPRUNE():
                 self.config.read(self.config_filePath)
 
                 # SONARR
-                self.sonarrhd_enabled = True if (
-                    self.config['SONARRHD']['ENABLED'] == "ON") else False
-                self.sonarrhd_url = self.config['SONARRHD']['URL']
-                self.sonarrhd_token = self.config['SONARRHD']['TOKEN']
+                self.sonarrdv_enabled = True if (
+                    self.config['SONARRDV']['ENABLED'] == "ON") else False
+                self.sonarrdv_url = self.config['SONARRDV']['URL']
+                self.sonarrdv_token = self.config['SONARRDV']['TOKEN']
 
                 # EMBY1
                 self.emby_enabled1 = True if (
@@ -140,7 +140,7 @@ class SONARRPRUNE():
 
     def isDiskFull(self):
         # Get the Rootfolers and diskage
-        if self.sonarrhd_enabled:
+        if self.sonarrdv_enabled:
             folders = self.sonarrNode.root_folder()
             root_Folder = folders[0]
             diskInfo = psutil.disk_usage(root_Folder.path)
@@ -186,22 +186,22 @@ class SONARRPRUNE():
     # Trigger a database update in Sonarr
     def trigger_database_update_sonarr(self):
         headers = {
-            'X-Api-Key': self.sonarrhd_token,
+            'X-Api-Key': self.sonarrdv_token,
             'Content-Type': 'application/json'
             }
         payload = {'name': 'refreshseries'}
         endpoint = "/api/v3/command"
 
-        if self.sonarrhd_enabled:
+        if self.sonarrdv_enabled:
             response = requests.post(
-                self.sonarrhd_url + endpoint, json=payload, headers=headers)
+                self.sonarrdv_url + endpoint, json=payload, headers=headers)
 
             if response.status_code == 201:
                 logging.info(
-                    "Database update triggered successfully for Sonarr (HD).")
+                    "Database update triggered successfully for Sonarr (DV).")
             else:
                 logging.error(
-                    f"Failed to trigger database update for Sonarr (HD). "
+                    f"Failed to trigger database update for Sonarr (DV). "
                     f"Status code: {response.status_code}"
                     )
 
@@ -358,7 +358,7 @@ class SONARRPRUNE():
                 ):
 
                     if not self.dry_run:
-                        if self.sonarrhd_enabled:
+                        if self.sonarrdv_enabled:
 
                             try:
                                 # Delete Season
@@ -426,11 +426,11 @@ class SONARRPRUNE():
             self.writeLog(False, "Prune - Library purge disabled.\n")
             sys.exit()
 
-        # Connect to Sonarr HD
-        if self.sonarrhd_enabled:
+        # Connect to Sonarr DV
+        if self.sonarrdv_enabled:
             try:
                 self.sonarrNode = SonarrAPI(
-                    self.sonarrhd_url, self.sonarrhd_token)
+                    self.sonarrdv_url, self.sonarrdv_token)
             except exceptions.ArrException as e:
                 logging.error(
                     f"Can't connect to Sonarr source {e}"
@@ -442,7 +442,7 @@ class SONARRPRUNE():
                 sys.exit(1)
         else:
             logging.info(
-                "Prune - Sonarr HD disabled in INI, exting.")
+                "Prune - Sonarr DV disabled in INI, exting.")
             self.writeLog(False, "Sonarr disabled in INI, exting.\n")
             sys.exit()
 
@@ -463,7 +463,7 @@ class SONARRPRUNE():
 
         # Get all Series from the server.
         media = None
-        if self.sonarrhd_enabled:
+        if self.sonarrdv_enabled:
             media = self.sonarrNode.all_series()
 
         if self.verbose_logging:
@@ -609,7 +609,7 @@ class SONARRPRUNE():
 
         # Call the function to trigger a database update
 
-        if self.sonarrhd_enabled:
+        if self.sonarrdv_enabled:
             self.trigger_database_update_sonarr()
 
         if self.emby_enabled1:

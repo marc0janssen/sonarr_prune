@@ -1,4 +1,4 @@
-[SONARRHD]
+[SONARRDV]
 ENABLED = ON
 URL = http://192.168.1.1:8989
 TOKEN = xxxxxx
