@@ -34,8 +34,8 @@ class SONARRPRUNE():
         app_dir = "/app/"
         log_dir = "/logging/prune/"
 
-        self.config_file = "sonarr_prune.ini"
-        self.exampleconfigfile = "sonarr_prune.ini.example"
+        self.config_file = "sonarrdv_prune.ini"
+        self.exampleconfigfile = "sonarrdv_prune.ini.example"
         self.log_file = "sonarr_prune.log"
         self.firstcomplete = ".firstcomplete"
 
