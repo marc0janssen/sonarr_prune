@@ -341,9 +341,9 @@ class SONARRPRUNE():
                     logging.info(txtWillBeRemoved)
 
                     self.writeLog(False,
-                                  f"Percentage diskspace sonarr: "
+                                  f"Percentage diskspace sonarrdv: "
                                   f"{percentage}%")
-                    logging.info(f"Percentage diskspace sonarr: {percentage}%")
+                    logging.info(f"Percentage diskspace sonarrdv: {percentage}%")
 
                     isRemoved, isPlanned = False, True
 
@@ -396,9 +396,9 @@ class SONARRPRUNE():
                     logging.info(txtRemoved)
 
                     self.writeLog(False,
-                                  f"Percentage diskspace sonarr: "
+                                  f"Percentage diskspace sonarrdv: "
                                   f"{percentage}%")
-                    logging.info(f"Percentage diskspace sonarr: {percentage}%")
+                    logging.info(f"Percentage diskspace sonarrdv: {percentage}%")
 
                     isRemoved, isPlanned = True, False
 
@@ -477,7 +477,7 @@ class SONARRPRUNE():
 
         isFull, percentage = self.isDiskFull()
 
-        logging.info(f"Percentage diskspace sonarr: {percentage}%")
+        logging.info(f"Percentage diskspace sonarrdv: {percentage}%")
 
         if media and isFull:
             media.sort(key=self.sortOnTitle)  # Sort the list on Title
@@ -534,9 +534,9 @@ class SONARRPRUNE():
 
         if self.verbose_logging:
             logging.info(txtEnd)
-            logging.info(f"Percentage diskspace sonarr: {percentage}%")
+            logging.info(f"Percentage diskspace sonarrdv: {percentage}%")
         self.writeLog(False, f"{txtEnd}\n")
-        self.writeLog(False, f"Percentage diskspace sonarr: {percentage}%\n")
+        self.writeLog(False, f"Percentage diskspace sonarrdv: {percentage}%\n")
 
         if self.mail_enabled and \
             (not self.only_mail_when_removed or
