@@ -342,7 +342,7 @@ class SONARRPRUNE():
 
                     self.writeLog(False,
                                   f"Percentage diskspace sonarr: "
-                                  f"{percentage}%")
+                                  f"{percentage}%\n")
                     logging.info(f"Percentage diskspace sonarr: {percentage}%")
 
                     isRemoved, isPlanned = False, True
@@ -397,7 +397,7 @@ class SONARRPRUNE():
 
                     self.writeLog(False,
                                   f"Percentage diskspace sonarr: "
-                                  f"{percentage}%")
+                                  f"{percentage}%\n")
                     logging.info(f"Percentage diskspace sonarr: {percentage}%")
 
                     isRemoved, isPlanned = True, False
