@@ -1,5 +1,5 @@
 # Name: Sonarr Prune
-# Coder: Marco Janssen (mastodon @marc0janssen@mastodon.online)
+# Coder: Marco Janssen (mastodon @marc0janssen@mastodon.green)
 # date: 2023-12-31 19:38:00
 # update: 2024-03-09 22:14:00
 
@@ -25,7 +25,7 @@ from socket import gaierror
 
 class SONARRPRUNE():
 
-    def __init__(self):
+    def __init__(self, config_path=None):
         logging.basicConfig(
             format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
             level=logging.INFO)
@@ -39,7 +39,11 @@ class SONARRPRUNE():
         self.log_file = "sonarr_prune.log"
         self.firstcomplete = ".firstcomplete"
 
-        self.config_filePath = f"{config_dir}{self.config_file}"
+        # Allow overriding the config file path (useful for tests)
+        if config_path:
+            self.config_filePath = config_path
+        else:
+            self.config_filePath = f"{config_dir}{self.config_file}"
         self.log_filePath = f"{log_dir}{self.log_file}"
 
         try:
@@ -50,66 +54,119 @@ class SONARRPRUNE():
                 self.config.read(self.config_filePath)
 
                 # SONARR
-                self.sonarrdv_enabled = True if (
-                    self.config['SONARRDV']['ENABLED'] == "ON") else False
-                self.sonarrdv_url = self.config['SONARRDV']['URL']
-                self.sonarrdv_token = self.config['SONARRDV']['TOKEN']
+                # Use ConfigParser helpers with safe fallbacks
+                # and normalize lists where appropriate
+                self.sonarrdv_enabled = self.config.getboolean(
+                    'SONARRDV', 'ENABLED', fallback=False
+                )
+                self.sonarrdv_url = self.config.get(
+                    'SONARRDV', 'URL', fallback=''
+                )
+                self.sonarrdv_token = self.config.get(
+                    'SONARRDV', 'TOKEN', fallback=''
+                )
+
+                def _cfg_boolean(section, option, fallback=False):
+                    """Robust boolean parser that accepts ON/OFF as well as
+                    true/false/1/0. ConfigParser.getboolean already supports
+                    these, but some edge cases (malformed values) are handled
+                    gracefully here.
+                    """
+                    try:
+                        return self.config.getboolean(
+                            section, option, fallback=fallback
+                        )
+                    except Exception:
+                        raw = self.config.get(section, option, fallback=None)
+                        if raw is None:
+                            return fallback
+                        v = str(raw).strip().lower()
+                        return v in ("1", "true", "yes", "on")
 
                 # EMBY1
-                self.emby_enabled1 = True if (
-                    self.config['EMBY1']['ENABLED'] == "ON") else False
-                self.emby_url1 = self.config['EMBY1']['URL']
-                self.emby_token1 = self.config['EMBY1']['TOKEN']
+                self.emby_enabled1 = _cfg_boolean('EMBY1', 'ENABLED', False)
+                self.emby_url1 = self.config.get(
+                    'EMBY1', 'URL', fallback=''
+                )
+                self.emby_token1 = self.config.get(
+                    'EMBY1', 'TOKEN', fallback=''
+                )
 
                 # EMBY2
-                self.emby_enabled2 = True if (
-                    self.config['EMBY2']['ENABLED'] == "ON") else False
-                self.emby_url2 = self.config['EMBY2']['URL']
-                self.emby_token2 = self.config['EMBY2']['TOKEN']
+                self.emby_enabled2 = _cfg_boolean('EMBY2', 'ENABLED', False)
+                self.emby_url2 = self.config.get(
+                    'EMBY2', 'URL', fallback=''
+                )
+                self.emby_token2 = self.config.get(
+                    'EMBY2', 'TOKEN', fallback=''
+                )
 
                 # PRUNE
-                # list(map(int, "list")) converts a list of string to
-                # a list of ints
-                self.remove_after_days = int(
-                    self.config['PRUNE']['REMOVE_SERIES_AFTER_DAYS'])
-                self.remove_percentage = float(
-                    self.config['PRUNE']['REMOVE_SERIES_DISK_PERCENTAGE'])
-                self.warn_days_infront = int(
-                    self.config['PRUNE']['WARN_DAYS_INFRONT'])
-                self.dry_run = True if (
-                    self.config['PRUNE']['DRY_RUN'] == "ON") else False
-                self.tags_to_keep = list(
-                    self.config['PRUNE']
-                    ['TAGS_KEEP_MOVIES_ANYWAY'].split(",")
+                self.remove_after_days = self.config.getint(
+                    'PRUNE', 'REMOVE_SERIES_AFTER_DAYS', fallback=30
                 )
-                self.enabled_run = True if (
-                    self.config['PRUNE']['ENABLED'] == "ON") else False
-                self.only_show_remove_messages = True if (
-                    self.config['PRUNE']
-                    ['ONLY_SHOW_REMOVE_MESSAGES'] == "ON") else False
-                self.verbose_logging = True if (
-                    self.config['PRUNE']['VERBOSE_LOGGING'] == "ON") else False
-                self.mail_enabled = True if (
-                    self.config['PRUNE']
-                    ['MAIL_ENABLED'] == "ON") else False
-                self.only_mail_when_removed = True if (
-                    self.config['PRUNE']
-                    ['ONLY_MAIL_WHEN_REMOVED'] == "ON") else False
-                self.mail_port = int(
-                    self.config['PRUNE']['MAIL_PORT'])
-                self.mail_server = self.config['PRUNE']['MAIL_SERVER']
-                self.mail_login = self.config['PRUNE']['MAIL_LOGIN']
-                self.mail_password = self.config['PRUNE']['MAIL_PASSWORD']
-                self.mail_sender = self.config['PRUNE']['MAIL_SENDER']
-                self.mail_receiver = list(
-                    self.config['PRUNE']['MAIL_RECEIVER'].split(","))
+                self.remove_percentage = self.config.getfloat(
+                    'PRUNE', 'REMOVE_SERIES_DISK_PERCENTAGE', fallback=90.0
+                )
+                self.warn_days_infront = self.config.getint(
+                    'PRUNE', 'WARN_DAYS_INFRONT', fallback=1
+                )
+                self.dry_run = _cfg_boolean('PRUNE', 'DRY_RUN', False)
+                # split and strip tags, ignore empty
+                raw_tags = self.config.get(
+                    'PRUNE', 'TAGS_KEEP_MOVIES_ANYWAY', fallback=''
+                )
+                self.tags_to_keep = [
+                    t.strip() for t in raw_tags.split(',') if t.strip()
+                ]
+                self.enabled_run = _cfg_boolean('PRUNE', 'ENABLED', True)
+                self.only_show_remove_messages = _cfg_boolean(
+                    'PRUNE', 'ONLY_SHOW_REMOVE_MESSAGES', False
+                )
+                self.verbose_logging = _cfg_boolean(
+                    'PRUNE', 'VERBOSE_LOGGING', False
+                )
+                self.mail_enabled = _cfg_boolean(
+                    'PRUNE', 'MAIL_ENABLED', False
+                )
+                self.only_mail_when_removed = _cfg_boolean(
+                    'PRUNE', 'ONLY_MAIL_WHEN_REMOVED', False
+                )
+                self.mail_port = self.config.getint(
+                    'PRUNE', 'MAIL_PORT', fallback=587
+                )
+                self.mail_server = self.config.get(
+                    'PRUNE', 'MAIL_SERVER', fallback=''
+                )
+                self.mail_login = self.config.get(
+                    'PRUNE', 'MAIL_LOGIN', fallback=''
+                )
+                self.mail_password = self.config.get(
+                    'PRUNE', 'MAIL_PASSWORD', fallback=''
+                )
+                self.mail_sender = self.config.get(
+                    'PRUNE', 'MAIL_SENDER', fallback=''
+                )
+                raw_receivers = self.config.get(
+                    'PRUNE', 'MAIL_RECEIVER', fallback=''
+                )
+                self.mail_receiver = [
+                    r.strip() for r in raw_receivers.split(',') if r.strip()
+                ]
 
                 # PUSHOVER
-                self.pushover_enabled = True if (
-                    self.config['PUSHOVER']['ENABLED'] == "ON") else False
-                self.pushover_user_key = self.config['PUSHOVER']['USER_KEY']
-                self.pushover_token_api = self.config['PUSHOVER']['TOKEN_API']
-                self.pushover_sound = self.config['PUSHOVER']['SOUND']
+                self.pushover_enabled = _cfg_boolean(
+                    'PUSHOVER', 'ENABLED', False
+                )
+                self.pushover_user_key = self.config.get(
+                    'PUSHOVER', 'USER_KEY', fallback=''
+                )
+                self.pushover_token_api = self.config.get(
+                    'PUSHOVER', 'TOKEN_API', fallback=''
+                )
+                self.pushover_sound = self.config.get(
+                    'PUSHOVER', 'SOUND', fallback=''
+                )
 
             except KeyError as e:
                 logging.error(
@@ -128,7 +185,7 @@ class SONARRPRUNE():
 
                 sys.exit()
 
-        except IOError or FileNotFoundError:
+        except (IOError, FileNotFoundError):
             logging.error(
                 f"Can't open file {self.config_filePath}, "
                 f"creating example INI file."
@@ -140,14 +197,20 @@ class SONARRPRUNE():
 
     def isDiskFull(self):
         # Get the Rootfolers and diskage
-        if self.sonarrdv_enabled:
+        if not self.sonarrdv_enabled:
+            return False, 0.0
+
+        try:
             folders = self.sonarrNode.root_folder()
+            if not folders:
+                return False, 0.0
             root_Folder = folders[0]
             diskInfo = psutil.disk_usage(root_Folder.path)
-            isFull = True \
-                if diskInfo.percent >= self.remove_percentage \
-                else False
+            isFull = diskInfo.percent >= self.remove_percentage
             return (isFull, diskInfo.percent)
+        except Exception as e:
+            logging.error(f"Failed to determine disk usage: {e}")
+            return False, 0.0
 
     def trigger_database_update_emby1(self):
 
@@ -156,7 +219,7 @@ class SONARRPRUNE():
 
         url = \
             f"{self.emby_url1}/Emby/Library/Refresh?api_key={self.emby_token1}"
-        response = requests.post(url, data, headers)
+        response = requests.post(url, data=data, headers=headers)
 
         if response.status_code == 204:
             logging.info(
@@ -173,7 +236,7 @@ class SONARRPRUNE():
 
         url = \
             f"{self.emby_url2}/Emby/Library/Refresh?api_key={self.emby_token2}"
-        response = requests.post(url, data, headers)
+        response = requests.post(url, data=data, headers=headers)
 
         if response.status_code == 204:
             logging.info(
@@ -268,10 +331,8 @@ class SONARRPRUNE():
 
                         if not self.only_show_remove_messages:
                             txtFirstSeen = (
-                                f"Prune - COMPLETE - "
-                                f"{serie.title} S"
-                                f"{str(season.seasonNumber)} "
-                                f"({serie.year})"
+                                f"PRUNE: COMPLETE - {serie.title} "
+                                f"S{str(season.seasonNumber)} ({serie.year})"
                             )
 
                             self.writeLog(False, f"{txtFirstSeen}\n")
@@ -329,22 +390,24 @@ class SONARRPRUNE():
                         )
 
                     txtWillBeRemoved = (
-                        f"Prune - WILL BE REMOVED - "
-                        f"{serie.title} "
-                        f"Season {str(season.seasonNumber).zfill(2)}"
-                        f" ({serie.year})"
-                        f" in {txtTimeLeft}"
-                        f" - {seasonDownloadDate}"
+                        f"PRUNE: WARNING - {serie.title} "
+                        f"Season {str(season.seasonNumber).zfill(2)} "
+                        f"({serie.year}) will be removed in {txtTimeLeft}."
                     )
 
                     self.writeLog(False, f"{txtWillBeRemoved}\n")
                     logging.info(txtWillBeRemoved)
 
-                    self.writeLog(False,
-                                  f"Percentage diskspace sonarrdv: "
-                                  f"{percentage}%\n")
+                    # report current disk usage and threshold
+                    self.writeLog(
+                        False,
+                        f"Disk usage: {percentage}% "
+                        f"(threshold: {self.remove_percentage}%)\n",
+                    )
                     logging.info(
-                        f"Percentage diskspace sonarrdv: {percentage}%")
+                        f"Disk usage: {percentage}% "
+                        f"(threshold: {self.remove_percentage}%)"
+                    )
 
                     isRemoved, isPlanned = False, True
 
@@ -377,41 +440,47 @@ class SONARRPRUNE():
                                     )
 
                     txtTitle = (
-                        f"{serie.title} ({serie.year}) Season "
-                        f"{str(season.seasonNumber).zfill(2)}"
+                        f"{serie.title} ({serie.year}) - "
+                        f"Season {str(season.seasonNumber).zfill(2)}"
                     )
 
                     if self.pushover_enabled:
                         self.message = self.userPushover.send_message(
-                            message=f"Prune - REMOVED - {txtTitle} "
-                            f" - {seasonDownloadDate}",
-                            sound=self.pushover_sound
+                            message=(
+                                f"PRUNE: REMOVED - {txtTitle} "
+                                f"(removed: {seasonDownloadDate})"
+                            ),
+                            sound=self.pushover_sound,
                         )
 
                     txtRemoved = (
-                        f"Prune - REMOVED - {txtTitle} "
-                        f" - {seasonDownloadDate}"
+                        f"PRUNE: REMOVED - {txtTitle} "
+                        f"(removed: {seasonDownloadDate})"
                     )
 
                     self.writeLog(False, f"{txtRemoved}\n")
                     logging.info(txtRemoved)
 
-                    self.writeLog(False,
-                                  f"Percentage diskspace sonarrdv: "
-                                  f"{percentage}%\n")
+                    self.writeLog(
+                        False,
+                        f"Disk usage: {percentage}% "
+                        f"(threshold: {self.remove_percentage}%)\n",
+                    )
                     logging.info(
-                        f"Percentage diskspace sonarrdv: {percentage}%")
+                        f"Disk usage: {percentage}% "
+                        f"(threshold: {self.remove_percentage}%)"
+                    )
 
                     isRemoved, isPlanned = True, False
 
                 else:
                     if not self.only_show_remove_messages:
+
                         txtActive = (
-                            f"Prune - ACTIVE - "
-                            f"{serie.title} "
+                            f"PRUNE: ACTIVE - {serie.title} "
                             f"Season {str(season.seasonNumber).zfill(2)} "
-                            f"({serie.year})"
-                            f" - {seasonDownloadDate}"
+                            f"({serie.year}) - first complete: "
+                            f"{seasonDownloadDate}"
                         )
 
                         self.writeLog(False, f"{txtActive}\n")
@@ -444,8 +513,8 @@ class SONARRPRUNE():
                 sys.exit(1)
         else:
             logging.info(
-                "Prune - Sonarr DV disabled in INI, exting.")
-            self.writeLog(False, "Sonarr disabled in INI, exting.\n")
+                "Prune - Sonarr DV disabled in INI, exiting.")
+            self.writeLog(False, "Sonarr disabled in INI, exiting.\n")
             sys.exit()
 
         if self.dry_run:
@@ -474,7 +543,7 @@ class SONARRPRUNE():
 
         # Make sure the library is not empty.
         numDeleted = 0
-        numNotifified = 0
+        numNotified = 0
         isRemoved, isPlanned = False, False
 
         isFull, percentage = self.isDiskFull()
@@ -508,7 +577,7 @@ class SONARRPRUNE():
                     seasons = serie.seasons
 
                     subNumDeleted = 0
-                    subNnumNotifified = 0
+                    subNumNotified = 0
 
                     for season in seasons:
 
@@ -517,15 +586,15 @@ class SONARRPRUNE():
                         if isRemoved:
                             subNumDeleted += 1
                         if isPlanned:
-                            subNnumNotifified += 1
+                            subNumNotified += 1
 
                     numDeleted += subNumDeleted
-                    numNotifified += subNnumNotifified
+                    numNotified += subNumNotified
 
                 time.sleep(0.2)
 
         txtEnd = (
-            f"Prune - There were {numDeleted} seaons removed."
+            f"Prune - There were {numDeleted} seasons removed."
         )
 
         if self.pushover_enabled:
@@ -543,7 +612,7 @@ class SONARRPRUNE():
         if self.mail_enabled and \
             (not self.only_mail_when_removed or
                 (self.only_mail_when_removed and (
-                    numDeleted > 0 or numNotifified > 0))):
+                    numDeleted > 0 or numNotified > 0))):
 
             sender_email = self.mail_sender
             receiver_email = self.mail_receiver
@@ -553,7 +622,7 @@ class SONARRPRUNE():
             message['To'] = ", ".join(receiver_email)
             message['Subject'] = (
                 f"Sonarr - Pruned {numDeleted} seasons "
-                f"and {numNotifified} planned for removal"
+                f"and {numNotified} planned for removal"
             )
 
             attachment = open(self.log_filePath, 'rb')

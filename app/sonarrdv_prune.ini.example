@@ -1,38 +1,58 @@
 [SONARRDV]
+; Enable Sonarr (Radarr-style Sonarr Docker/host). Accepted boolean values: true/false/on/off/1/0
 ENABLED = ON
-URL = http://192.168.1.1:8989
-TOKEN = xxxxxx
+; Full URL to your Sonarr (with scheme), e.g. http://192.168.1.10:8989
+URL = http://127.0.0.1:8989
+; API key/token for Sonarr. Keep this secret.
+TOKEN = your_sonarr_api_key_here
 
 [EMBY1]
-ENABLED = ON
-URL = http://192.168.1.2:8096
-TOKEN = yyyyyyyy
+; Optional: trigger library refresh on Emby after changes
+ENABLED = OFF
+URL = http://127.0.0.1:8096
+TOKEN = your_emby_api_key_or_empty
 
 [EMBY2]
-ENABLED = ON
-URL = http://192.168.1.2:8096
-TOKEN = yyyyyyyy
+; Optional second Emby instance
+ENABLED = OFF
+URL = http://127.0.0.1:8096
+TOKEN = 
 
 [PRUNE]
-ENABLED = OFF
+; Master switch for prune operations. If false, the script will exit.
+ENABLED = ON
+; If ON, nothing will actually be deleted (useful to test behavior)
 DRY_RUN = ON
-TAGS_KEEP_MOVIES_ANYWAY = keep
+; Comma-separated tag labels that the script should never remove
+TAGS_KEEP_MOVIES_ANYWAY = keep, important
+; Remove seasons after this many days since the season was marked complete
 REMOVE_SERIES_AFTER_DAYS = 30
-REMOVE_SERIES_DISK_PERCENTAGE = 80
+; Trigger pruning only when disk usage >= this percentage (0-100)
+REMOVE_SERIES_DISK_PERCENTAGE = 80.0
+; Number of days before removal to send a warning/notification
 WARN_DAYS_INFRONT = 1
+; If true, only log/show remove messages (reduce noise)
+
 ONLY_SHOW_REMOVE_MESSAGES = OFF
-VERBOSE_LOGGING = ON
+; Enable verbose logging (more info)
+VERBOSE_LOGGING = OFF
+
+; Mail settings (used to send the prunelog)
 MAIL_ENABLED = OFF
+; If ON, only send mail when something was removed or planned
 ONLY_MAIL_WHEN_REMOVED = OFF
 MAIL_PORT = 587
-MAIL_SERVER = mail.sever.tld
-MAIL_LOGIN = login@mail.tld
-MAIL_PASSWORD = sgdfjsgdjsdg
-MAIL_SENDER = sender@mail.tld
-MAIL_RECEIVER = receiver@mail.tld,receiver2@mail.tld
+MAIL_SERVER = smtp.example.tld
+MAIL_LOGIN = user@example.tld
+MAIL_PASSWORD = change_me
+MAIL_SENDER = sonarr-prune@example.tld
+; Comma-separated list of recipients
+MAIL_RECEIVER = alerts@example.tld, ops@example.tld
 
 [PUSHOVER]
+; Pushover notifications (optional)
 ENABLED = OFF
-USER_KEY = xxxxxxxxxxxxxxx
-TOKEN_API = xxxxxxxxxxxxxxx
-SOUND = pushover
+USER_KEY = your_pushover_user_key
+TOKEN_API = your_pushover_app_token
+; Optional: pushover sound name (empty for default)
+SOUND = 
