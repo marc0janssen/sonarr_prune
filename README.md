@@ -1,143 +1,125 @@
 # sonarr_prune
 
-Small tool to automatically prune old seasons from a Sonarr (Radarr-style) library
+Small tool to automatically prune old seasons from a Sonarr library when disk usage is high enough and seasons have been complete for a configurable time. It supports dry-run, optional “keep” tags, mail, and Pushover.
 
-Quick start
-1. Copy the example config and edit values:
-	- `cp app/sonarrdv_prune.ini.example /config/sonarrdv_prune.ini`
-	- Edit API keys, URLs and prune settings in the config file.
+## Project layout
 
-2. Run (dry-run recommended first):
-	- `python3 app/sonarrdv_prune.py`
+| Path | Role |
+|------|------|
+| `app/sonarrdv_prune.py` | Entry point: config, I/O, Sonarr/Emby calls, logging, notifications |
+| `app/sonarr_client.py` | Minimal Sonarr REST client (`/api/v3`) |
+| `app/sonarr_prune_logic.py` | Pure prune rules (age, disk threshold, warning window, keep-tags) — no network or filesystem |
+| `app/sonarrdv_prune.ini.example` | Example configuration |
+| `app/version.py` | Version number (`__version__`, semantic versioning) |
+| `tests/` | `pytest` unit tests |
 
-Configuration
-- See `app/sonarrdv_prune.ini.example` for all available settings and descriptions.
-- Key settings: `REMOVE_SERIES_AFTER_DAYS`, `REMOVE_SERIES_DISK_PERCENTAGE`, `DRY_RUN` and `ENABLED`.
+Prune **decisions** live in `sonarr_prune_logic.py`; the main script maps Sonarr data and paths into that logic and performs deletes, logs, and notifications.
 
-Tests & CI
-- Tests are provided under `tests/` and use `pytest`.
-- A GitHub Actions workflow runs linting and tests on push/PR to `main`.
+## Requirements
 
-Dependencies
-- See `requirements.txt` for runtime and test dependencies (requests, psutil, arrapi, chump, pytest).
+- Python 3.11+ (CI tests 3.11 and 3.12)
+- Dependencies: see [`requirements.txt`](requirements.txt) (`httpx`, `psutil`, `chump`; `pytest` for tests)
 
-License
-- See `LICENSE` in the repo root.
-# sonarr_prune
+Install:
 
-A small, focused tool to automatically prune old seasons from a Sonarr (or Sonarr DV) library.
-
-This repository provides a configurable script (`app/sonarrdv_prune.py`) that:
-- Evaluates seasons by age and optionally by disk usage.
-- Marks or removes seasons according to your configuration (supports dry-run).
-- Integrates with Sonarr, optionally triggers Emby/Sonarr/Media server updates, and can notify via mail or Pushover.
-
-## Quickstart
-
-1. Copy the example configuration and edit values:
-
-```fish
-cp app/sonarrdv_prune.ini.example /config/sonarrdv_prune.ini
-# edit /config/sonarrdv_prune.ini to set your API keys, URLs and prune rules
+```bash
+python3 -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
 ```
 
-2. Run a dry-run first to see what would be removed:
+## Quick start
 
-```fish
-python3 app/sonarrdv_prune.py --config /config/sonarrdv_prune.ini
-```
+1. Copy the example config and edit URLs, tokens, and prune settings:
 
-3. When you're comfortable with the output, disable dry-run in the config and run again.
+   ```bash
+   cp app/sonarrdv_prune.ini.example /config/sonarrdv_prune.ini
+   # edit /config/sonarrdv_prune.ini
+   ```
 
-Notes:
-- By default the script reads `app/sonarrdv_prune.ini.example` if no `--config` is provided.
-- Use a scheduler (cron/systemd timer) if you want periodic pruning.
+2. Run with **`DRY_RUN = ON`** first and inspect the log output.
 
-## Configuration (high level)
+3. Default paths expect a container-style layout:
 
-See `app/sonarrdv_prune.ini.example` for the full set of options. Important highlights:
+   - Config: `/config/sonarrdv_prune.ini`
+   - Log: `/var/log/sonarr_prune.log`
 
-- ENABLED: ON/OFF — whether pruning is active. The code accepts ON/OFF, true/false, 1/0.
-- DRY_RUN: ON/OFF — if ON the script only logs planned removals.
-- REMOVE_SERIES_AFTER_DAYS: integer — age threshold (in days) after which seasons are eligible for removal.
-- REMOVE_SERIES_DISK_PERCENTAGE: integer — if disk usage goes above this percentage, pruning may be triggered.
+   From the repository root (with those paths available or adjusted in your environment):
 
-Boolean values in the example config use `ON` / `OFF` for clarity. The code's parser accepts these as well as common boolean variants.
+   ```bash
+   python3 app/sonarrdv_prune.py
+   ```
 
-Other integrations:
-- SONARR_API_KEY and SONARR_URL — for querying Sonarr.
-- EMBY options — if you want the script to tell Emby to update its library after removals.
-- MAIL_* and PUSHOVER_* — optional notification channels.
+   Print the version and exit:
 
-## Usage / Examples
+   ```bash
+   python3 app/sonarrdv_prune.py --version
+   # or: -V
+   ```
 
-Dry-run (preferred for first runs):
+   In code: `from app.version import __version__` or `import app` then `app.__version__`.
 
-```fish
-python3 app/sonarrdv_prune.py --config /config/sonarrdv_prune.ini
-```
+   For automated tests or embedding, you can pass a config path into `SONARRPRUNE(config_path="...")` in code; there is no `--config` CLI flag.
 
-Run for real (set `DRY_RUN = OFF` in the config):
+4. Use a scheduler (cron, systemd timer, etc.) if you want periodic pruning.
 
-```fish
-python3 app/sonarrdv_prune.py --config /config/sonarrdv_prune.ini
-```
+## Configuration
 
-Run in verbose mode (prints more details):
+Full options and comments: [`app/sonarrdv_prune.ini.example`](app/sonarrdv_prune.ini.example).
 
-```fish
-python3 app/sonarrdv_prune.py --config /config/sonarrdv_prune.ini --verbose
-```
+Highlights:
 
-Tip: Redirect or monitor the log file. The script uses a rotating file handler and also prints to stdout.
+| Section | Purpose |
+|---------|---------|
+| **SONARRDV** | `ENABLED`, base **URL** (e.g. `http://host:8989`, no `/api` suffix), **TOKEN** (API key) |
+| **PRUNE** | `ENABLED`, `DRY_RUN`, `REMOVE_SERIES_AFTER_DAYS`, `REMOVE_SERIES_DISK_PERCENTAGE`, `WARN_DAYS_INFRONT`, `TAGS_KEEP_MOVIES_ANYWAY`, verbosity and mail options |
+| **EMBY1 / EMBY2** | Optional library refresh after a run |
+| **PUSHOVER** | Optional notifications |
+
+Booleans accept values such as `ON`/`OFF`, `true`/`false`, `1`/`0`.
+
+**Sonarr URL:** must be the instance root (scheme + host + port). The client calls `/api/v3/...` itself.
+
+## Behaviour (short)
+
+- Pruning runs only when disk usage (on Sonarr’s first root folder path) is **≥** `REMOVE_SERIES_DISK_PERCENTAGE`.
+- A season folder must be **complete** in Sonarr (all episodes have files) and tracked with a `.firstcomplete` marker file for “first complete” time.
+- Series with any of the configured **keep** tag labels are skipped.
+- After changes, the script can trigger a Sonarr series refresh and optional Emby refreshes.
 
 ## Logging
 
-- Logs are written to the configured log file (see the config). A rotating file handler is used to avoid unbounded log files.
-- Log messages contain a short prefix (e.g. `PRUNE: REMOVED`, `PRUNE: WARNING`, `PRUNE: COMPLETE`) to make post-run searches easier.
+- Messages use prefixes such as `PRUNE: COMPLETE`, `PRUNE: WARNING`, `PRUNE: REMOVED`, `PRUNE: ACTIVE`, and `Prune - KEEPING`.
+- With mail enabled, the log file can be attached to the outgoing message.
 
-## Testing and CI
+## Development
 
-- Unit tests live in `tests/` and use `pytest`.
-- A GitHub Actions workflow runs linting and tests on push/PR to `main`.
+Run tests from the repo root:
 
-To run tests locally (fish shell):
-
-```fish
-python3 -m pip install --user -r requirements.txt
-python3 -m pytest -q
+```bash
+pip install -r requirements.txt
+pytest
 ```
 
-Run linting:
+Lint (optional):
 
-```fish
-python3 -m pip install --user flake8
+```bash
+pip install flake8
 python3 -m flake8 app tests --max-line-length=79
 ```
 
-Black formatting note: Black may abort on some Python patch releases (e.g. old 3.12.x warns). Prefer Python 3.11 or 3.12.6+ if you plan to run Black.
+CI (GitHub Actions) runs tests on push/PR to `main`.
 
 ## Troubleshooting
 
-- If Sonarr API calls fail: verify `SONARR_URL` and `SONARR_API_KEY` in your config and that Sonarr is reachable from the host running this script.
-- If disk checks behave unexpectedly: ensure the path configured for Sonarr's root folder exists and the user running the script has read access.
-- If Emby or other integrations fail: confirm the target service URLs and API keys, and check the network/firewall rules.
-
-Common gotchas:
-- Remember to set `DRY_RUN = OFF` only when you are ready to actually remove files.
-- Test configuration changes by running a single dry-run and inspecting logged `PRUNE:` messages.
+- **Cannot connect to Sonarr:** check `SONARRDV` **URL** and **TOKEN**, and that the host running the script can reach Sonarr.
+- **Nothing is pruned:** disk usage must be at or above the configured percentage; confirm Sonarr’s root folder path and permissions for `psutil.disk_usage`.
+- **Emby / mail / Pushover issues:** verify URLs, API keys, and firewall rules.
 
 ## Contributing
 
-Patches, issues, and suggestions are welcome. Recommended workflow:
-
-1. Open an issue describing the bug or enhancement.
-2. Create a branch, add tests for behavior changes, and open a PR.
+Issues and pull requests are welcome. For behaviour changes, add or extend tests (especially in `tests/test_sonarr_prune_logic.py` for pure rules).
 
 ## License
 
-See the `LICENSE` file in the repository root.
-
-## Contact
-
-If you want help configuring or testing the script, open an issue or reach out via the repo. Please include a copy of the config (remove secrets) and a short excerpt of the logs when asking for help.
+See [`LICENSE`](LICENSE) in the repository root.

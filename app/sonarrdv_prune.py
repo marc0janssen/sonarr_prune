@@ -3,13 +3,14 @@
 # date: 2023-12-31 19:38:00
 # update: 2024-03-09 22:14:00
 
+import argparse
 import logging
 import configparser
 import sys
 import shutil
 import smtplib
 import os
-import requests
+import httpx
 import psutil
 import time
 
@@ -17,10 +18,36 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
-from datetime import datetime, timedelta
-from arrapi import SonarrAPI, exceptions
+from datetime import datetime
+
 from chump import Application
+
+try:
+    from app.sonarr_client import SonarrClient, SonarrClientError
+    from app.sonarr_prune_logic import (
+        SeasonActionKind,
+        decide_season_prune,
+        format_warning_time_left,
+        resolve_keep_tag_ids,
+        season_directory_name,
+        series_should_keep,
+    )
+except ImportError:
+    from sonarr_client import SonarrClient, SonarrClientError
+    from sonarr_prune_logic import (
+        SeasonActionKind,
+        decide_season_prune,
+        format_warning_time_left,
+        resolve_keep_tag_ids,
+        season_directory_name,
+        series_should_keep,
+    )
 from socket import gaierror
+
+try:
+    from app.version import __version__
+except ImportError:
+    from version import __version__
 
 
 class SONARRPRUNE():
@@ -47,8 +74,8 @@ class SONARRPRUNE():
         self.log_filePath = f"{log_dir}{self.log_file}"
 
         try:
-            with open(self.config_filePath, "r") as f:
-                f.close()
+            if not os.path.isfile(self.config_filePath):
+                raise FileNotFoundError(self.config_filePath)
             try:
                 self.config = configparser.ConfigParser()
                 self.config.read(self.config_filePath)
@@ -212,38 +239,15 @@ class SONARRPRUNE():
             logging.error(f"Failed to determine disk usage: {e}")
             return False, 0.0
 
-    def trigger_database_update_emby1(self):
-
-        headers = {}
-        data = {}
-
-        url = \
-            f"{self.emby_url1}/Emby/Library/Refresh?api_key={self.emby_token1}"
-        response = requests.post(url, data=data, headers=headers)
-
+    def trigger_database_update_emby(self, base_url: str, api_key: str, name: str):
+        url = f"{base_url}/Emby/Library/Refresh?api_key={api_key}"
+        response = httpx.post(url, data={}, headers={}, timeout=60.0)
         if response.status_code == 204:
             logging.info(
-                "Database update triggered successfully for Emby1.")
+                f"Database update triggered successfully for {name}.")
         else:
             logging.error(
-                f"Failed to trigger database update for Emby1. Status code: "
-                f"{response.status_code}")
-
-    def trigger_database_update_emby2(self):
-
-        headers = {}
-        data = {}
-
-        url = \
-            f"{self.emby_url2}/Emby/Library/Refresh?api_key={self.emby_token2}"
-        response = requests.post(url, data=data, headers=headers)
-
-        if response.status_code == 204:
-            logging.info(
-                "Database update triggered successfully for Emby2.")
-        else:
-            logging.error(
-                f"Failed to trigger database update for Emby2. Status code: "
+                f"Failed to trigger database update for {name}. Status code: "
                 f"{response.status_code}")
 
     # Trigger a database update in Sonarr
@@ -256,8 +260,12 @@ class SONARRPRUNE():
         endpoint = "/api/v3/command"
 
         if self.sonarrdv_enabled:
-            response = requests.post(
-                self.sonarrdv_url + endpoint, json=payload, headers=headers)
+            response = httpx.post(
+                self.sonarrdv_url + endpoint,
+                json=payload,
+                headers=headers,
+                timeout=60.0,
+            )
 
             if response.status_code == 201:
                 logging.info(
@@ -282,213 +290,133 @@ class SONARRPRUNE():
                 f"Can't write file {self.log_filePath}."
             )
 
-    def sortOnTitle(self, e):
-        return e.sortTitle
-
-    def getTagLabeltoID(self):
-        # Put all tags in a dictonairy with pair label <=> ID
-
-        TagLabeltoID = {}
-        for tag in self.sonarrNode.all_tags():
-            # Add tag to lookup by it's name
-            TagLabeltoID[tag.label] = tag.id
-
-        return TagLabeltoID
-
-    def getIDsforTagLabels(self, tagLabels):
-
-        TagLabeltoID = self.getTagLabeltoID()
-
-        # Get ID's for extending media
-        tagsIDs = []
-        for taglabel in tagLabels:
-            tagID = TagLabeltoID.get(taglabel)
-            if tagID:
-                tagsIDs.append(tagID)
-
-        return tagsIDs
+    def _season_first_complete_at(self, serie, season):
+        """First-complete time from marker file mtime, or None if N/A."""
+        sdir = season_directory_name(season.seasonNumber)
+        base = os.path.join(serie.path, sdir)
+        if not os.path.isdir(base):
+            return None
+        if season.totalEpisodeCount != season.episodeFileCount:
+            return None
+        fc_path = os.path.join(base, self.firstcomplete)
+        if not os.path.isfile(fc_path):
+            open(fc_path, "w").close()
+            if not self.only_show_remove_messages:
+                txt_first = (
+                    f"PRUNE: COMPLETE - {serie.title} "
+                    f"S{str(season.seasonNumber)} ({serie.year})"
+                )
+                self.writeLog(False, f"{txt_first}\n")
+                logging.info(txt_first)
+        mtime = os.stat(fc_path).st_mtime
+        return datetime.fromtimestamp(mtime)
 
     def evalSeason(self, serie, season):
+        """Filesystem + notifications; prune rules live in sonarr_prune_logic."""
+        season_download_date = self._season_first_complete_at(serie, season)
+        if not season_download_date:
+            return False, False
 
-        isRemoved, isPlanned = False, False
-        seasonDownloadDate = None
+        now = datetime.now()
+        is_full, percentage = self.isDiskFull()
+        dec = decide_season_prune(
+            now,
+            season_download_date,
+            remove_after_days=self.remove_after_days,
+            warn_days_infront=self.warn_days_infront,
+            is_disk_full=is_full,
+        )
 
-        seasonDir = "Specials" if season.seasonNumber == 0 \
-            else f"Season {season.seasonNumber}"
+        sdir = season_directory_name(season.seasonNumber)
+        season_path = os.path.join(serie.path, sdir)
 
-        if os.path.exists(f"{serie.path}/{seasonDir}"):
-
-            if season.totalEpisodeCount == season.episodeFileCount:
-
-                if not os.path.isfile(
-                        f"{serie.path}/{seasonDir}/{self.firstcomplete}"):
-
-                    with open(
-                        f"{serie.path}/{seasonDir}/{self.firstcomplete}",
-                            'w') \
-                            as firstcomplete_file:
-                        firstcomplete_file.close()
-
-                        if not self.only_show_remove_messages:
-                            txtFirstSeen = (
-                                f"PRUNE: COMPLETE - {serie.title} "
-                                f"S{str(season.seasonNumber)} ({serie.year})"
-                            )
-
-                            self.writeLog(False, f"{txtFirstSeen}\n")
-                            logging.info(txtFirstSeen)
-
-                modifieddate = os.stat(
-                    f"{serie.path}/{seasonDir}/"
-                    f"{self.firstcomplete}").st_mtime
-
-                seasonDownloadDate = \
-                    datetime.fromtimestamp(modifieddate)
-
-            now = datetime.now()
-
-            if seasonDownloadDate:
-
-                # check if there needs to be warn "DAYS" infront of removal
-                # 1. Are we still within the period before removel?
-                # 2. Is "NOW" less than "warning days" before removal?
-                # 3. is "NOW" more then "warning days - 1" before removal
-                #               (warn only 1 day)
-
-                isFull, percentage = self.isDiskFull()
-
-                if (
-                    timedelta(
-                        days=self.remove_after_days) >
-                    now - seasonDownloadDate and
-                    seasonDownloadDate +
-                    timedelta(
-                        days=self.remove_after_days) -
-                    now <= timedelta(days=self.warn_days_infront) and
-                    seasonDownloadDate +
-                    timedelta(
-                        days=self.remove_after_days) -
-                    now > timedelta(days=self.warn_days_infront) -
-                    timedelta(days=1)
-                ):
-                    self.timeLeft = (
-                        seasonDownloadDate +
-                        timedelta(
-                            days=self.remove_after_days) - now)
-
-                    txtTimeLeft = \
-                        'h'.join(str(self.timeLeft).split(':')[:2])
-
-                    if self.pushover_enabled:
-                        self.message = self.userPushover.send_message(
-                            message=f"Prune - {serie.title} "
-                            f"Season {str(season.seasonNumber).zfill(2)}"
-                            f" ({serie.year}) "
-                            f"will be removed from server in "
-                            f"{txtTimeLeft}",
-                            sound=self.pushover_sound
-                        )
-
-                    txtWillBeRemoved = (
-                        f"PRUNE: WARNING - {serie.title} "
-                        f"Season {str(season.seasonNumber).zfill(2)} "
-                        f"({serie.year}) will be removed in {txtTimeLeft}."
-                    )
-
-                    self.writeLog(False, f"{txtWillBeRemoved}\n")
-                    logging.info(txtWillBeRemoved)
-
-                    # report current disk usage and threshold
-                    self.writeLog(
-                        False,
-                        f"Disk usage: {percentage}% "
-                        f"(threshold: {self.remove_percentage}%)\n",
-                    )
-                    logging.info(
-                        f"Disk usage: {percentage}% "
-                        f"(threshold: {self.remove_percentage}%)"
-                    )
-
-                    isRemoved, isPlanned = False, True
-
-                    return isRemoved, isPlanned
-
-                # Check is season is older than "days set in INI"
-
-                if (
-                    now - seasonDownloadDate >=
-                        timedelta(
-                            days=self.remove_after_days) and isFull
-                ):
-
-                    if not self.dry_run:
-                        if self.sonarrdv_enabled:
-
-                            try:
-                                # Delete Season
-                                shutil.rmtree(f"{serie.path}/{seasonDir}")
-
-                            except FileNotFoundError:
-                                logging.error(
-                                    f"Season Not Found {serie.title} "
-                                    f"season {season.seasonNumber}"
-                                    )
-                            except OSError as error:
-                                logging.error(
-                                    f"Error removing {serie.title} "
-                                    f"season {season.seasonNumber}: {error}"
-                                    )
-
-                    txtTitle = (
-                        f"{serie.title} ({serie.year}) - "
+        if dec.kind == SeasonActionKind.WARN:
+            assert dec.time_until_removal is not None
+            self.timeLeft = dec.time_until_removal
+            txt_time = format_warning_time_left(dec.time_until_removal)
+            if self.pushover_enabled:
+                self.message = self.userPushover.send_message(
+                    message=(
+                        f"Prune - {serie.title} "
                         f"Season {str(season.seasonNumber).zfill(2)}"
+                        f" ({serie.year}) "
+                        f"will be removed from server in "
+                        f"{txt_time}"
+                    ),
+                    sound=self.pushover_sound,
+                )
+            txt_warn = (
+                f"PRUNE: WARNING - {serie.title} "
+                f"Season {str(season.seasonNumber).zfill(2)} "
+                f"({serie.year}) will be removed in {txt_time}."
+            )
+            self.writeLog(False, f"{txt_warn}\n")
+            logging.info(txt_warn)
+            self.writeLog(
+                False,
+                f"Disk usage: {percentage}% "
+                f"(threshold: {self.remove_percentage}%)\n",
+            )
+            logging.info(
+                f"Disk usage: {percentage}% "
+                f"(threshold: {self.remove_percentage}%)"
+            )
+            return False, True
+
+        if dec.kind == SeasonActionKind.REMOVE:
+            if not self.dry_run and self.sonarrdv_enabled:
+                try:
+                    shutil.rmtree(season_path)
+                except FileNotFoundError:
+                    logging.error(
+                        f"Season Not Found {serie.title} "
+                        f"season {season.seasonNumber}"
                     )
-
-                    if self.pushover_enabled:
-                        self.message = self.userPushover.send_message(
-                            message=(
-                                f"PRUNE: REMOVED - {txtTitle} "
-                                f"(removed: {seasonDownloadDate})"
-                            ),
-                            sound=self.pushover_sound,
-                        )
-
-                    txtRemoved = (
-                        f"PRUNE: REMOVED - {txtTitle} "
-                        f"(removed: {seasonDownloadDate})"
+                except OSError as error:
+                    logging.error(
+                        f"Error removing {serie.title} "
+                        f"season {season.seasonNumber}: {error}"
                     )
+            txt_title = (
+                f"{serie.title} ({serie.year}) - "
+                f"Season {str(season.seasonNumber).zfill(2)}"
+            )
+            if self.pushover_enabled:
+                self.message = self.userPushover.send_message(
+                    message=(
+                        f"PRUNE: REMOVED - {txt_title} "
+                        f"(removed: {season_download_date})"
+                    ),
+                    sound=self.pushover_sound,
+                )
+            txt_removed = (
+                f"PRUNE: REMOVED - {txt_title} "
+                f"(removed: {season_download_date})"
+            )
+            self.writeLog(False, f"{txt_removed}\n")
+            logging.info(txt_removed)
+            self.writeLog(
+                False,
+                f"Disk usage: {percentage}% "
+                f"(threshold: {self.remove_percentage}%)\n",
+            )
+            logging.info(
+                f"Disk usage: {percentage}% "
+                f"(threshold: {self.remove_percentage}%)"
+            )
+            return True, False
 
-                    self.writeLog(False, f"{txtRemoved}\n")
-                    logging.info(txtRemoved)
-
-                    self.writeLog(
-                        False,
-                        f"Disk usage: {percentage}% "
-                        f"(threshold: {self.remove_percentage}%)\n",
-                    )
-                    logging.info(
-                        f"Disk usage: {percentage}% "
-                        f"(threshold: {self.remove_percentage}%)"
-                    )
-
-                    isRemoved, isPlanned = True, False
-
-                else:
-                    if not self.only_show_remove_messages:
-
-                        txtActive = (
-                            f"PRUNE: ACTIVE - {serie.title} "
-                            f"Season {str(season.seasonNumber).zfill(2)} "
-                            f"({serie.year}) - first complete: "
-                            f"{seasonDownloadDate}"
-                        )
-
-                        self.writeLog(False, f"{txtActive}\n")
-                        logging.info(txtActive)
-
-                    isRemoved, isPlanned = False, False
-
-        return isRemoved, isPlanned
+        # ACTIVE
+        if not self.only_show_remove_messages:
+            txt_active = (
+                f"PRUNE: ACTIVE - {serie.title} "
+                f"Season {str(season.seasonNumber).zfill(2)} "
+                f"({serie.year}) - first complete: "
+                f"{season_download_date}"
+            )
+            self.writeLog(False, f"{txt_active}\n")
+            logging.info(txt_active)
+        return False, False
 
     def run(self):
         if not self.enabled_run:
@@ -500,9 +428,9 @@ class SONARRPRUNE():
         # Connect to Sonarr DV
         if self.sonarrdv_enabled:
             try:
-                self.sonarrNode = SonarrAPI(
+                self.sonarrNode = SonarrClient(
                     self.sonarrdv_url, self.sonarrdv_token)
-            except exceptions.ArrException as e:
+            except SonarrClientError as e:
                 logging.error(
                     f"Can't connect to Sonarr source {e}"
                 )
@@ -537,9 +465,13 @@ class SONARRPRUNE():
         if self.sonarrdv_enabled:
             media = self.sonarrNode.all_series()
 
+        logging.info("Sonarr Prune %s", __version__)
         if self.verbose_logging:
-            logging.info("Prune - Sonarr Prune started.")
-        self.writeLog(True, "Prune - Sonarr Prune started.\n")
+            logging.info("Prune - Sonarr Prune %s started.", __version__)
+        self.writeLog(
+            True,
+            f"Prune - Sonarr Prune {__version__} started.\n",
+        )
 
         # Make sure the library is not empty.
         numDeleted = 0
@@ -551,17 +483,16 @@ class SONARRPRUNE():
         logging.info(f"Percentage diskspace sonarrdv: {percentage}%")
 
         if media and isFull:
-            media.sort(key=self.sortOnTitle)  # Sort the list on Title
+            media.sort(key=lambda s: s.sortTitle)
+            label_to_id = {
+                tag.label: tag.id for tag in self.sonarrNode.all_tags()
+            }
+            tags_ids_to_keep = resolve_keep_tag_ids(
+                self.tags_to_keep, label_to_id)
+
             for serie in media:
 
-                # Get ID's for keeping series anyway
-                tagLabels_to_keep = self.tags_to_keep
-                tagsIDs_to_keep = self.getIDsforTagLabels(
-                    tagLabels_to_keep)
-
-                # check if ONE of the "KEEP" tags is
-                # in the set of "MOVIE TAGS"
-                if set(serie.tagsIds) & set(tagsIDs_to_keep):
+                if series_should_keep(serie.tagsIds, tags_ids_to_keep):
                     if not self.only_show_remove_messages:
 
                         txtKeeping = (
@@ -684,13 +615,25 @@ class SONARRPRUNE():
             self.trigger_database_update_sonarr()
 
         if self.emby_enabled1:
-            self.trigger_database_update_emby1()
+            self.trigger_database_update_emby(
+                self.emby_url1, self.emby_token1, "Emby1")
 
         if self.emby_enabled2:
-            self.trigger_database_update_emby2()
+            self.trigger_database_update_emby(
+                self.emby_url2, self.emby_token2, "Emby2")
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        description="Prune old Sonarr seasons when disk usage is high.",
+    )
+    parser.add_argument(
+        "-V",
+        "--version",
+        action="version",
+        version=f"sonarr_prune {__version__}",
+    )
+    parser.parse_args()
 
     sonarrprune = SONARRPRUNE()
     sonarrprune.run()
