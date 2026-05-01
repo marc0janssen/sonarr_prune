@@ -269,6 +269,17 @@ class SONARRPRUNE():
                 f"Can't write file {self.log_filePath}."
             )
 
+    def _log_event(self, msg: str):
+        self.writeLog(False, f"{msg}\n")
+        logging.info(msg)
+
+    def _send_pushover(self, message: str):
+        if self.pushover_enabled:
+            self.message = self.userPushover.send_message(
+                message=message,
+                sound=self.pushover_sound,
+            )
+
     def _season_first_complete_at(self, serie, season):
         """First-complete time from marker file mtime, or None if N/A."""
         sdir = season_directory_name(season.seasonNumber)
@@ -285,8 +296,7 @@ class SONARRPRUNE():
                     f"PRUNE: COMPLETE - {serie.title} "
                     f"S{str(season.seasonNumber)} ({serie.year})"
                 )
-                self.writeLog(False, f"{txt_first}\n")
-                logging.info(txt_first)
+                self._log_event(txt_first)
         mtime = os.stat(fc_path).st_mtime
         return datetime.fromtimestamp(mtime)
 
@@ -311,24 +321,19 @@ class SONARRPRUNE():
             assert dec.time_until_removal is not None
             self.timeLeft = dec.time_until_removal
             txt_time = format_warning_time_left(dec.time_until_removal)
-            if self.pushover_enabled:
-                self.message = self.userPushover.send_message(
-                    message=(
-                        f"Prune - {serie.title} "
-                        f"Season {str(season.seasonNumber).zfill(2)}"
-                        f" ({serie.year}) "
-                        f"will be removed from server in "
-                        f"{txt_time}"
-                    ),
-                    sound=self.pushover_sound,
-                )
+            self._send_pushover(
+                f"Prune - {serie.title} "
+                f"Season {str(season.seasonNumber).zfill(2)}"
+                f" ({serie.year}) "
+                f"will be removed from server in "
+                f"{txt_time}"
+            )
             txt_warn = (
                 f"PRUNE: WARNING - {serie.title} "
                 f"Season {str(season.seasonNumber).zfill(2)} "
                 f"({serie.year}) will be removed in {txt_time}."
             )
-            self.writeLog(False, f"{txt_warn}\n")
-            logging.info(txt_warn)
+            self._log_event(txt_warn)
             return False, True
 
         if dec.kind == SeasonActionKind.REMOVE:
@@ -349,20 +354,15 @@ class SONARRPRUNE():
                 f"{serie.title} ({serie.year}) - "
                 f"Season {str(season.seasonNumber).zfill(2)}"
             )
-            if self.pushover_enabled:
-                self.message = self.userPushover.send_message(
-                    message=(
-                        f"PRUNE: REMOVED - {txt_title} "
-                        f"(removed: {season_download_date})"
-                    ),
-                    sound=self.pushover_sound,
-                )
+            self._send_pushover(
+                f"PRUNE: REMOVED - {txt_title} "
+                f"(removed: {season_download_date})"
+            )
             txt_removed = (
                 f"PRUNE: REMOVED - {txt_title} "
                 f"(removed: {season_download_date})"
             )
-            self.writeLog(False, f"{txt_removed}\n")
-            logging.info(txt_removed)
+            self._log_event(txt_removed)
             return True, False
 
         # ACTIVE
@@ -373,8 +373,7 @@ class SONARRPRUNE():
                 f"({serie.year}) - first complete: "
                 f"{season_download_date}"
             )
-            self.writeLog(False, f"{txt_active}\n")
-            logging.info(txt_active)
+            self._log_event(txt_active)
         return False, False
 
     def run(self):
@@ -420,9 +419,7 @@ class SONARRPRUNE():
                 self.appPushover.get_user(self.pushover_user_key)
 
         # Get all Series from the server.
-        media = None
-        if self.sonarrdv_enabled:
-            media = self.sonarrNode.all_series()
+        media = self.sonarrNode.all_series()
 
         logging.info("Sonarr Prune %s", __version__)
         if self.verbose_logging:
@@ -435,7 +432,6 @@ class SONARRPRUNE():
         # Make sure the library is not empty.
         numDeleted = 0
         numNotified = 0
-        isRemoved, isPlanned = False, False
 
         if media:
             media.sort(key=lambda s: s.sortTitle)
@@ -449,29 +445,20 @@ class SONARRPRUNE():
 
                 if series_should_keep(serie.tagsIds, tags_ids_to_keep):
                     if not self.only_show_remove_messages:
-
                         txtKeeping = (
                             f"Prune - KEEPING - {serie.title} ({serie.year})."
                             f" Skipping."
                         )
-
-                        self.writeLog(False, f"{txtKeeping}\n")
-                        logging.info(txtKeeping)
-
+                        self._log_event(txtKeeping)
                 else:
-
-                    seasons = serie.seasons
-
                     subNumDeleted = 0
                     subNumNotified = 0
 
-                    for season in seasons:
-
-                        isRemoved, isPlanned = \
-                            self.evalSeason(serie, season)
-                        if isRemoved:
+                    for season in serie.seasons:
+                        removed, planned = self.evalSeason(serie, season)
+                        if removed:
                             subNumDeleted += 1
-                        if isPlanned:
+                        if planned:
                             subNumNotified += 1
 
                     numDeleted += subNumDeleted
@@ -483,20 +470,18 @@ class SONARRPRUNE():
             f"Prune - There were {numDeleted} seasons removed."
         )
 
-        if self.pushover_enabled:
-            self.message = self.userPushover.send_message(
-                message=txtEnd,
-                sound=self.pushover_sound
-            )
+        self._send_pushover(txtEnd)
 
         if self.verbose_logging:
             logging.info(txtEnd)
         self.writeLog(False, f"{txtEnd}\n")
 
-        if self.mail_enabled and \
-            (not self.only_mail_when_removed or
-                (self.only_mail_when_removed and (
-                    numDeleted > 0 or numNotified > 0))):
+        should_send_mail = self.mail_enabled and (
+            not self.only_mail_when_removed
+            or numDeleted > 0
+            or numNotified > 0
+        )
+        if should_send_mail:
 
             sender_email = self.mail_sender
             receiver_email = self.mail_receiver
