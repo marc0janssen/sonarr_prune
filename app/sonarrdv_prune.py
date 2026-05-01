@@ -55,6 +55,9 @@ class SONARRPRUNE():
         logging.basicConfig(
             format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
             level=logging.INFO)
+        # Keep HTTP client internals quiet unless they are warnings/errors.
+        logging.getLogger("httpx").setLevel(logging.WARNING)
+        logging.getLogger("httpcore").setLevel(logging.WARNING)
 
         config_dir = "/config/"
         app_dir = "/app/"
@@ -435,11 +438,13 @@ class SONARRPRUNE():
 
         if media:
             media.sort(key=lambda s: s.sortTitle)
-            label_to_id = {
-                tag.label: tag.id for tag in self.sonarrNode.all_tags()
-            }
-            tags_ids_to_keep = resolve_keep_tag_ids(
-                self.tags_to_keep, label_to_id)
+            tags_ids_to_keep = []
+            if self.tags_to_keep:
+                label_to_id = {
+                    tag.label: tag.id for tag in self.sonarrNode.all_tags()
+                }
+                tags_ids_to_keep = resolve_keep_tag_ids(
+                    self.tags_to_keep, label_to_id)
 
             for serie in media:
 
