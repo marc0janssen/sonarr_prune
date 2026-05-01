@@ -11,7 +11,6 @@ import shutil
 import smtplib
 import os
 import httpx
-import psutil
 import time
 
 from email.mime.multipart import MIMEMultipart
@@ -132,9 +131,6 @@ class SONARRPRUNE():
                 self.remove_after_days = self.config.getint(
                     'PRUNE', 'REMOVE_SERIES_AFTER_DAYS', fallback=30
                 )
-                self.remove_percentage = self.config.getfloat(
-                    'PRUNE', 'REMOVE_SERIES_DISK_PERCENTAGE', fallback=90.0
-                )
                 self.warn_days_infront = self.config.getint(
                     'PRUNE', 'WARN_DAYS_INFRONT', fallback=1
                 )
@@ -222,23 +218,6 @@ class SONARRPRUNE():
                             f'{config_dir}{self.exampleconfigfile}')
             sys.exit()
 
-    def isDiskFull(self):
-        # Get the Rootfolers and diskage
-        if not self.sonarrdv_enabled:
-            return False, 0.0
-
-        try:
-            folders = self.sonarrNode.root_folder()
-            if not folders:
-                return False, 0.0
-            root_Folder = folders[0]
-            diskInfo = psutil.disk_usage(root_Folder.path)
-            isFull = diskInfo.percent >= self.remove_percentage
-            return (isFull, diskInfo.percent)
-        except Exception as e:
-            logging.error(f"Failed to determine disk usage: {e}")
-            return False, 0.0
-
     def trigger_database_update_emby(self, base_url: str, api_key: str, name: str):
         url = f"{base_url}/Emby/Library/Refresh?api_key={api_key}"
         response = httpx.post(url, data={}, headers={}, timeout=60.0)
@@ -318,13 +297,11 @@ class SONARRPRUNE():
             return False, False
 
         now = datetime.now()
-        is_full, percentage = self.isDiskFull()
         dec = decide_season_prune(
             now,
             season_download_date,
             remove_after_days=self.remove_after_days,
             warn_days_infront=self.warn_days_infront,
-            is_disk_full=is_full,
         )
 
         sdir = season_directory_name(season.seasonNumber)
@@ -352,15 +329,6 @@ class SONARRPRUNE():
             )
             self.writeLog(False, f"{txt_warn}\n")
             logging.info(txt_warn)
-            self.writeLog(
-                False,
-                f"Disk usage: {percentage}% "
-                f"(threshold: {self.remove_percentage}%)\n",
-            )
-            logging.info(
-                f"Disk usage: {percentage}% "
-                f"(threshold: {self.remove_percentage}%)"
-            )
             return False, True
 
         if dec.kind == SeasonActionKind.REMOVE:
@@ -395,15 +363,6 @@ class SONARRPRUNE():
             )
             self.writeLog(False, f"{txt_removed}\n")
             logging.info(txt_removed)
-            self.writeLog(
-                False,
-                f"Disk usage: {percentage}% "
-                f"(threshold: {self.remove_percentage}%)\n",
-            )
-            logging.info(
-                f"Disk usage: {percentage}% "
-                f"(threshold: {self.remove_percentage}%)"
-            )
             return True, False
 
         # ACTIVE
@@ -478,11 +437,7 @@ class SONARRPRUNE():
         numNotified = 0
         isRemoved, isPlanned = False, False
 
-        isFull, percentage = self.isDiskFull()
-
-        logging.info(f"Percentage diskspace sonarrdv: {percentage}%")
-
-        if media and isFull:
+        if media:
             media.sort(key=lambda s: s.sortTitle)
             label_to_id = {
                 tag.label: tag.id for tag in self.sonarrNode.all_tags()
@@ -536,9 +491,7 @@ class SONARRPRUNE():
 
         if self.verbose_logging:
             logging.info(txtEnd)
-            logging.info(f"Percentage diskspace sonarrdv: {percentage}%")
         self.writeLog(False, f"{txtEnd}\n")
-        self.writeLog(False, f"Percentage diskspace sonarrdv: {percentage}%\n")
 
         if self.mail_enabled and \
             (not self.only_mail_when_removed or
@@ -625,7 +578,7 @@ class SONARRPRUNE():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-        description="Prune old Sonarr seasons when disk usage is high.",
+        description="Prune old Sonarr seasons when they are old enough.",
     )
     parser.add_argument(
         "-V",

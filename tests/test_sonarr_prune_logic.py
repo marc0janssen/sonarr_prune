@@ -36,12 +36,11 @@ def test_decide_noop():
         None,
         remove_after_days=30,
         warn_days_infront=1,
-        is_disk_full=True,
     )
     assert dec.kind == SeasonActionKind.NOOP
 
 
-def test_decide_remove_when_old_and_disk_full():
+def test_decide_remove_when_old_enough():
     first = datetime(2023, 1, 1)
     now = datetime(2023, 2, 5)  # > 30 days later
     dec = decide_season_prune(
@@ -49,12 +48,11 @@ def test_decide_remove_when_old_and_disk_full():
         first,
         remove_after_days=30,
         warn_days_infront=1,
-        is_disk_full=True,
     )
     assert dec.kind == SeasonActionKind.REMOVE
 
 
-def test_decide_no_remove_when_disk_not_full():
+def test_decide_remove_when_old_even_without_disk_gate():
     first = datetime(2023, 1, 1)
     now = datetime(2023, 2, 5)
     dec = decide_season_prune(
@@ -62,9 +60,8 @@ def test_decide_no_remove_when_disk_not_full():
         first,
         remove_after_days=30,
         warn_days_infront=1,
-        is_disk_full=False,
     )
-    assert dec.kind == SeasonActionKind.ACTIVE
+    assert dec.kind == SeasonActionKind.REMOVE
 
 
 def test_decide_active_when_young():
@@ -75,7 +72,6 @@ def test_decide_active_when_young():
         first,
         remove_after_days=30,
         warn_days_infront=1,
-        is_disk_full=True,
     )
     assert dec.kind == SeasonActionKind.ACTIVE
 
@@ -106,7 +102,6 @@ def test_warn_window_example(first, now, warn_days, expect_warn):
         first,
         remove_after_days=30,
         warn_days_infront=warn_days,
-        is_disk_full=True,
     )
     if expect_warn:
         assert dec.kind == SeasonActionKind.WARN

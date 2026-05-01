@@ -1,4 +1,3 @@
 httpx
-psutil
 chump
 pytest

@@ -19,7 +19,7 @@ class SeasonActionKind(Enum):
     NOOP = "noop"  # No prune evaluation (e.g. no date / not applicable)
     ACTIVE = "active"  # Complete but not in warn/remove window yet
     WARN = "warn"  # Inside one-day warning window before removal eligibility
-    REMOVE = "remove"  # Eligible for removal (disk full + age threshold)
+    REMOVE = "remove"  # Eligible for removal (age threshold reached)
 
 
 @dataclass(frozen=True)
@@ -57,7 +57,6 @@ def decide_season_prune(
     *,
     remove_after_days: int,
     warn_days_infront: int,
-    is_disk_full: bool,
 ) -> SeasonDecision:
     """
     Decide what to do for a season that is complete on disk and has a
@@ -84,7 +83,7 @@ def decide_season_prune(
             time_until_removal=sd + remove_after - now,
         )
 
-    if now - sd >= remove_after and is_disk_full:
+    if now - sd >= remove_after:
         return SeasonDecision(SeasonActionKind.REMOVE)
 
     return SeasonDecision(SeasonActionKind.ACTIVE)

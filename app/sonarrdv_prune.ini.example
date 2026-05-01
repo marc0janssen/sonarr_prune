@@ -27,8 +27,6 @@ DRY_RUN = ON
 TAGS_KEEP_MOVIES_ANYWAY = keep, important
 ; Remove seasons after this many days since the season was marked complete
 REMOVE_SERIES_AFTER_DAYS = 30
-; Trigger pruning only when disk usage >= this percentage (0-100)
-REMOVE_SERIES_DISK_PERCENTAGE = 80.0
 ; Number of days before removal to send a warning/notification
 WARN_DAYS_INFRONT = 1
 ; If true, only log/show remove messages (reduce noise)

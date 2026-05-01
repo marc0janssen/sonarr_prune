@@ -1,6 +1,6 @@
 # sonarr_prune
 
-Small tool to automatically prune old seasons from a Sonarr library when disk usage is high enough and seasons have been complete for a configurable time. It supports dry-run, optional “keep” tags, mail, and Pushover.
+Small tool to automatically prune old seasons from a Sonarr library once they have been complete for a configurable time. It supports dry-run, optional “keep” tags, mail, and Pushover.
 
 ## Project layout
 
@@ -8,7 +8,7 @@ Small tool to automatically prune old seasons from a Sonarr library when disk us
 |------|------|
 | `app/sonarrdv_prune.py` | Entry point: config, I/O, Sonarr/Emby calls, logging, notifications |
 | `app/sonarr_client.py` | Minimal Sonarr REST client (`/api/v3`) |
-| `app/sonarr_prune_logic.py` | Pure prune rules (age, disk threshold, warning window, keep-tags) — no network or filesystem |
+| `app/sonarr_prune_logic.py` | Pure prune rules (age, warning window, keep-tags) — no network or filesystem |
 | `app/sonarrdv_prune.ini.example` | Example configuration |
 | `app/version.py` | Version number (`__version__`, semantic versioning) |
 | `tests/` | `pytest` unit tests |
@@ -18,7 +18,7 @@ Prune **decisions** live in `sonarr_prune_logic.py`; the main script maps Sonarr
 ## Requirements
 
 - Python 3.11+ (CI tests 3.11 and 3.12)
-- Dependencies: see [`requirements.txt`](requirements.txt) (`httpx`, `psutil`, `chump`; `pytest` for tests)
+- Dependencies: see [`requirements.txt`](requirements.txt) (`httpx`, `chump`; `pytest` for tests)
 
 Install:
 
@@ -72,7 +72,7 @@ Highlights:
 | Section | Purpose |
 |---------|---------|
 | **SONARRDV** | `ENABLED`, base **URL** (e.g. `http://host:8989`, no `/api` suffix), **TOKEN** (API key) |
-| **PRUNE** | `ENABLED`, `DRY_RUN`, `REMOVE_SERIES_AFTER_DAYS`, `REMOVE_SERIES_DISK_PERCENTAGE`, `WARN_DAYS_INFRONT`, `TAGS_KEEP_MOVIES_ANYWAY`, verbosity and mail options |
+| **PRUNE** | `ENABLED`, `DRY_RUN`, `REMOVE_SERIES_AFTER_DAYS`, `WARN_DAYS_INFRONT`, `TAGS_KEEP_MOVIES_ANYWAY`, verbosity and mail options |
 | **EMBY1 / EMBY2** | Optional library refresh after a run |
 | **PUSHOVER** | Optional notifications |
 
@@ -82,7 +82,7 @@ Booleans accept values such as `ON`/`OFF`, `true`/`false`, `1`/`0`.
 
 ## Behaviour (short)
 
-- Pruning runs only when disk usage (on Sonarr’s first root folder path) is **≥** `REMOVE_SERIES_DISK_PERCENTAGE`.
+- Pruning removes complete seasons once they are older than `REMOVE_SERIES_AFTER_DAYS`.
 - A season folder must be **complete** in Sonarr (all episodes have files) and tracked with a `.firstcomplete` marker file for “first complete” time.
 - Series with any of the configured **keep** tag labels are skipped.
 - After changes, the script can trigger a Sonarr series refresh and optional Emby refreshes.
@@ -113,7 +113,7 @@ CI (GitHub Actions) runs tests on push/PR to `main`.
 ## Troubleshooting
 
 - **Cannot connect to Sonarr:** check `SONARRDV` **URL** and **TOKEN**, and that the host running the script can reach Sonarr.
-- **Nothing is pruned:** disk usage must be at or above the configured percentage; confirm Sonarr’s root folder path and permissions for `psutil.disk_usage`.
+- **Nothing is pruned:** confirm seasons are complete in Sonarr, old enough for `REMOVE_SERIES_AFTER_DAYS`, and not protected by keep-tags.
 - **Emby / mail / Pushover issues:** verify URLs, API keys, and firewall rules.
 
 ## Contributing
